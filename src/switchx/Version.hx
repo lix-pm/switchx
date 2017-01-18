@@ -7,13 +7,27 @@ enum UserVersionData {
   ULatest;
   UStable;
   UNightly(hash:String);
-  UOfficial(version:String);
+  UOfficial(version:Official);
   
 }
 
+abstract Official(String) from String to String {
+  public var isPrerelease(get, never):Bool;
+    function get_isPrerelease()
+      return this.indexOf('-') != -1;
+      
+  static public function compare(a:Official, b:Official):Int
+    return Reflect.compare(b, a);
+}
+
 enum ResolvedUserVersionData {
-  RNightly(hash:String, date:Date);
-  ROfficial(version:String);
+  RNightly(nightly:Nightly);
+  ROfficial(version:Official);
+}
+
+typedef Nightly = {
+  var hash(default, null):String;
+  var published(default, null):Date;
 }
 
 abstract ResolvedVersion(ResolvedUserVersionData) from ResolvedUserVersionData to ResolvedUserVersionData {
@@ -22,10 +36,15 @@ abstract ResolvedVersion(ResolvedUserVersionData) from ResolvedUserVersionData t
   
     function get_id()
       return switch this {
-        case RNightly(v, _): v;
+        case RNightly({ hash: v }): v;
         case ROfficial(v): v;
       }
-      
+  
+  public function toString():String    
+    return switch this {
+      case RNightly({ hash: v }): 'nightly build $v';
+      case ROfficial(v): 'official release $v';
+    }
 }
 
 abstract UserVersion(UserVersionData) from UserVersionData to UserVersionData {
@@ -35,7 +54,7 @@ abstract UserVersion(UserVersionData) from UserVersionData to UserVersionData {
   @:from static function ofResolved(v:ResolvedVersion):UserVersion
     return switch v {
       case ROfficial(version): UOfficial(version);
-      case RNightly(version, _): UNightly(version);
+      case RNightly({ hash: version }): UNightly(version);
     }
   
   static public function isHash(version:String) {
@@ -52,7 +71,7 @@ abstract UserVersion(UserVersionData) from UserVersionData to UserVersionData {
       if (s == null) null;
       else switch s {
         case 'auto': null;
-        case 'edge': UEdge;
+        case 'edge' | 'nightly': UEdge;
         case 'latest': ULatest;
         case 'stable': UStable;
         case isHash(_) => true: UNightly(s);

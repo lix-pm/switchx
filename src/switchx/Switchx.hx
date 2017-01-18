@@ -2,27 +2,18 @@ package switchx;
 
 import haxe.io.Bytes;
 import haxe.io.Path;
-import switchx.Version;
-import sys.io.File;
+using sys.io.File;
 
-using switchx.BackwardArrayIter;
+using switchx.Version;
 using tink.CoreApi;
 using DateTools;
 using StringTools;
 using sys.FileSystem;
 using haxe.Json;
 
-@:forward(iterator, length)
-abstract Nightlies(Array<Pair<String, Date>>) {
-  
-  public function new(v:Array<Pair<String, Date>>) {
-    v = v.copy();
-    v.sort(function (a, b) return Reflect.compare(b.b.getTime(), a.b.getTime()));
-    this = v;
-  }
-  
-  @:arrayAccess public inline function get(index:Int)
-    return this[index];
+enum PickOfficial {
+  StableOnly;
+  IncludePrereleases;
 }
 
 class Switchx {
@@ -54,15 +45,27 @@ class Switchx {
   
   static function linkToNightly(hash:String, date:Date)
     return date.format('$NIGHTLIES/$PLATFORM/haxe_%Y-%m-%d_development_$hash.tar.gz');
+  
+  static function sortedOfficial(kind:PickOfficial, versions:Array<Official>):Iterable<Official> {
+    if (kind == StableOnly)
+      versions = [for (v in versions) if (!v.isPrerelease) v];
+    versions.sort(Official.compare);
+    return versions;
+  }
     
-  static public function officialOnline():Promise<Array<String>>
+  static public function officialOnline(kind:PickOfficial):Promise<Iterable<Official>>
     return Download.text('https://raw.githubusercontent.com/HaxeFoundation/haxe.org/staging/downloads/versions.json')
       .next(function (s) {
-        return (s.parse().versions : Array<{ version: String }>).map(function (v) return v.version);
+        return sortedOfficial(kind, s.parse().versions.map(function (v) return v.version));
       });
-    
-  static public function nightliesOnline():Promise<Nightlies> {
-    return Download.text('$NIGHTLIES/$PLATFORM/').next(function (s:String) {
+      
+  static function sortedNightlies(raw:Array<Nightly>):Iterable<Nightly> {
+    raw.sort(function (a, b) return Reflect.compare(b.published.getTime(), a.published.getTime()));
+    return raw;
+  }
+  
+  static public function nightliesOnline():Promise<Iterable<Nightly>> {
+    return Download.text('$NIGHTLIES/$PLATFORM/').next(function (s:String):Iterable<Nightly> {
       var lines = s.split('------------------\n').pop().split('\n');
       var ret = [];
       for (l in lines) 
@@ -74,57 +77,99 @@ class Switchx {
                 case -1: //whatever
                 case v.substr(0, _).split(' ') => [_.split('-').map(Std.parseInt) => [y, m, d], _.split(':').map(Std.parseInt) => [hh, mm]]:
                   
-                  ret.push(new Pair(
-                    v.split('_development_').pop().split('.').shift(),
-                    new Date(y, m - 1, d, hh, mm, 0)
-                  ));
+                  ret.push({
+                    hash: v.split('_development_').pop().split('.').shift(),
+                    published: new Date(y, m - 1, d, hh, mm, 0),
+                  });
                   
                 default:
                   
               }
             
         }      
-      return new Nightlies(ret);
+      return sortedNightlies(ret);
     });
   } 
+    
+  public function officialInstalled(kind):Promise<Iterable<Official>> 
+    return 
+      attempt(
+        'Get installed Haxe versions', 
+        sortedOfficial(kind, [for (v in versions.readDirectory())
+          if (!v.isHash() && '$versions/$v'.isDirectory()) v
+        ])
+      );
   
+  static function attempt<A>(what:String, l:Lazy<A>):Promise<A>
+    return 
+      try
+        Success(l.get())
+      catch (e:Dynamic)
+        Failure(new Error('Failed to $what because $e'));
+          
+  public function nightliesInstalled()
+    return 
+      attempt(
+        'get installed Haxe versions', 
+        sortedNightlies([for (v in versions.readDirectory().filter(UserVersion.isHash)) {
+          hash:v, 
+          published: Date.fromString('$versions/$v/$VERSION_INFO'.getContent().parse().published)
+        }])
+      );
+    
+  public function switchTo(version:ResolvedVersion):Promise<Noise>
+    return attempt('save new configuration to ${scope.configFile}', function () {
+      scope.reconfigure({
+        version: version.id,
+        resolveLibs: scope.config.resolveLibs,
+      });
+      
+      return Noise;
+    });
+    
+  public function resolveInstalled(version:UserVersion):Promise<ResolvedVersion>
+    return resolve(version, officialInstalled, nightliesInstalled);
+    
+  public function resolveOnline(version:UserVersion):Promise<ResolvedVersion>
+    return resolve(version, officialOnline, nightliesOnline);
   
-  function resolve(version:UserVersion, getOfficial:Void->Promise<Array<String>>, getNightlies:Void->Promise<Nightlies>):Promise<ResolvedVersion>
+  static function pickFirst<A>(kind:String, make:A->ResolvedVersion):Next<Iterable<A>, ResolvedVersion> 
+    return function (i:Iterable<A>) 
+      return switch i.iterator().next() {
+        case null: new Error(NotFound, 'No $kind build found');
+        case v: make(v);
+      }
+    
+  function resolve(version:UserVersion, getOfficial:PickOfficial->Promise<Iterable<Official>>, getNightlies:Void->Promise<Iterable<Nightly>>):Promise<ResolvedVersion>
     return switch version {
       case UEdge: 
         
-        getNightlies().next(function (v) return RNightly(v[0].a, v[0].b));
+        getNightlies().next(pickFirst('nightly', RNightly));
         
       case ULatest:
         
-        getOfficial().next(function (v) return ROfficial(v[v.length - 1]));
+        getOfficial(IncludePrereleases).next(pickFirst('official', ROfficial));
         
       case UStable: 
         
-        getOfficial().next(function (v) {
-          for (v in v.backwards())
-            if (v.indexOf('-') == -1)
-              return ROfficial(v);
-          throw 'assert';
-        });
+        getOfficial(StableOnly).next(pickFirst('stable', ROfficial));
         
       case UNightly(hash): 
 
         getNightlies().next(function (v) {
           for (n in v)
-            if (n.a == hash)
-              return Success(RNightly(n.a, n.b));
+            if (n.hash == hash)
+              return RNightly(n);
               
-          return Failure(new Error(NotFound, 'Unknown nightly $version'));
+          return new Error(NotFound, 'Unknown nightly $version');
         });
         
       case UOfficial(version): 
         
-        getOfficial().next(function (v)
-          return switch v.indexOf(version) {
-            case -1: Failure(new Error(NotFound, 'Unknown version $version'));
-            default: Success(ROfficial(version));
-          }
+        getOfficial(IncludePrereleases).next(function (versions)
+          return 
+            if (Lambda.has(versions, version)) ROfficial(version)
+            else new Error(NotFound, 'Unknown version $version')
         );
     }  
     
@@ -141,7 +186,7 @@ class Switchx {
   
   function replace(target:String, replacement:String, archiveAs:String)
     if (target.exists()) {
-      var old = '$downloads/$archiveAs${Math.floor(target.stat().ctime.getTime())}';
+      var old = '$downloads/$archiveAs@${Math.floor(target.stat().ctime.getTime())}';
       target.rename(old);
       replacement.rename(target);
     }
@@ -149,21 +194,21 @@ class Switchx {
       replacement.rename(target);
     }
       
-  public function download(version:UserVersion, options:{ force: Bool }):Promise<ResolvedVersion>
-    return resolve(version, officialOnline, nightliesOnline).next(function (r) return switch r {
+  public function download(version:ResolvedVersion, options:{ force: Bool }):Promise<Bool>
+    return switch version {
       case isDownloaded(_) => true if (options.force != true):
-        trace('Version ${r.id} is already downloaded'); 
-        Future.sync(Success(r));
         
-      case RNightly(hash, date):
+        false;
+        
+      case RNightly({ hash: hash, published: date }):
         
         Download.tar(linkToNightly(hash, date), 1, '$downloads/$hash@${Math.floor(Date.now().getTime())}').next(function (dir) {
-          File.saveContent('$dir/$VERSION_INFO', haxe.Json.stringify({
+          '$dir/$VERSION_INFO'.saveContent(haxe.Json.stringify({
             published: Date.now().toString(),
           }));
           
           replace('$versions/$hash', dir, hash);
-          return r;
+          return true;
         });
         
       case ROfficial(version):
@@ -181,8 +226,8 @@ class Switchx {
           
         ret.next(function (dir) {
           replace('$versions/$version', dir, version);
-          return r;          
+          return true;
         });
-    });  
+    }  
   
 }
