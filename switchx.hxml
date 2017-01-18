@@ -1,0 +1,4 @@
+-lib haxeshim
+-cp src
+-js bin/switchx.js
+-main switchx.Cli

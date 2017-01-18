@@ -1,0 +1,3 @@
+[submodule "lib/haxeshim"]
+	path = lib/haxeshim
+	url = https://github.com/lix-pm/haxeshim

@@ -1,4 +1,1 @@
--cp ../haxeshim/lib/tink_core/src
--cp ../haxeshim/lib/hxnodejs/src
-../haxeshim/lib/hxnodejs/extraParams.hxml
--cp ../haxeshim/src
+-scoped-hxml lib/haxeshim/common.hxml

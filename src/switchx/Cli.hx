@@ -10,12 +10,19 @@ using tink.CoreApi;
 class Cli {
 
   static function main() {
-      
+    if (!Scope.exists(Scope.DEFAULT_ROOT)) {
+      Fs.ensureDir(Scope.DEFAULT_ROOT+'/');
+      Scope.create(Scope.DEFAULT_ROOT, {
+        version: 'dummy',
+        resolveLibs: Mixed,
+      });
+    }
+    dispatch(Sys.args());
+  }
+  
+  static function dispatch(args:Array<String>) {
     var scope = Scope.seek();
     var api = new Switchx(scope);
-      
-    var args = Sys.args();
-    
     var log =
       if (args.remove('--silent')) function (msg:String) {}
       else function (msg:String) console.log(msg);
@@ -115,7 +122,7 @@ class Cli {
       }
       
     process.stderr.write('unknown command $command');
-    Sys.exit(404);
+    Sys.exit(404);    
   }
   
 }
