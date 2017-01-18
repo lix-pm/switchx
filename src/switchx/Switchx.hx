@@ -204,7 +204,7 @@ class Switchx {
         
         Download.tar(linkToNightly(hash, date), 1, '$downloads/$hash@${Math.floor(Date.now().getTime())}').next(function (dir) {
           '$dir/$VERSION_INFO'.saveContent(haxe.Json.stringify({
-            published: Date.now().toString(),
+            published: date.toString(),
           }));
           
           replace('$versions/$hash', dir, hash);

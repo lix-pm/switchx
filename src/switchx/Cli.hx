@@ -2,32 +2,42 @@ package switchx;
 
 import haxeshim.*;
 import js.Node.*;
+import Sys.*;
 import switchx.Version;
 
 using DateTools;
 using tink.CoreApi;
+using StringTools;
 
 class Cli {
 
   static function main() {
     if (!Scope.exists(Scope.DEFAULT_ROOT)) {
+      
       Fs.ensureDir(Scope.DEFAULT_ROOT+'/');
       Scope.create(Scope.DEFAULT_ROOT, {
-        version: 'dummy',
+        version: 'stable',
         resolveLibs: Mixed,
       });
+      dispatch(['install', '--global', '--silent'], function () {
+        dispatch(args());
+      });
+      return;
     }
-    dispatch(Sys.args());
+    dispatch(args());
   }
   
-  static function dispatch(args:Array<String>) {
-    var scope = Scope.seek();
+  static function dispatch(args:Array<String>, ?cb) {
+    var global = args.remove('--global');
+    
+    var scope = Scope.seek({ cwd: if (global) Scope.DEFAULT_ROOT else null });
+    
     var api = new Switchx(scope);
+    
     var log =
       if (args.remove('--silent')) function (msg:String) {}
-      else function (msg:String) console.log(msg);
+      else function (msg:String) Sys.println(msg);
     
-    log('');
     var force = args.remove('--force');
     
     function download(version:String) {
@@ -55,7 +65,7 @@ class Cli {
       });
     
     var commands = [
-      new Command('install', '[<version>]', 'installs the version if specified, otherwise installs the currently configured version', 
+      new Command('install', '[<version>]', 'installs the version if specified,\notherwise installs the currently configured version', 
         function (args) return switch args {
           case [v]:
             download(v).next(switchTo);
@@ -79,6 +89,33 @@ class Cli {
           case v: new Error('too many arguments');
         }
       ),
+      new Command('scope', '[create|delete]', 'creates or deletes the current scope or\ninspects it if no argument is supplied',
+        function (args) return switch args {
+          case ['create']:
+            Scope.create(scope.cwd, {
+              version: scope.config.version,
+              resolveLibs: if (scope.isGlobal) Scoped else scope.config.resolveLibs,
+            });
+            log('created scope in ${scope.cwd}');
+            Noise;
+          case ['delete']:
+            if (scope.isGlobal)
+              new Error('Cannot delete global scope');
+            else {
+              scope.delete();
+              log('deleted scope in ${scope.scopeDir}');
+              Noise;
+            }
+          case []: 
+            println(
+              (if (scope.isGlobal) '[global]'
+              else '[local]') + ' ${scope.scopeDir}'
+            );
+            Noise;
+          case v: 
+            new Error('Invalid arguments');
+        }
+      ),
       new Command('list', '', 'lists currently downloaded versions',
         function (args) return switch args {
           case []:
@@ -91,13 +128,24 @@ class Cli {
                     else
                       '    $s';
                 
-                var lines = ['Official releases:', ''].concat([
-                  for (v in o) highlight(v)   
-                ]).concat(['', 'Nightly builds:', '']).concat([
-                  for (v in n) highlight(v.hash) + v.published.format('  (%Y-%m-%d %H:%M)')
-                ]);
+                println('');
+                println('Official releases:');
+                println('');
                 
-                process.stdout.write(lines.join('\n'));
+                for (v in o) 
+                  println(highlight(v));
+                
+                if (n.iterator().hasNext()) {
+                  println('');
+                  println('Nightly builds:');
+                  println('');
+                  
+                  for (v in n) 
+                    println(highlight(v.hash) + v.published.format('  (%Y-%m-%d %H:%M)'));
+                }
+                
+                println('');
+                
                 return Noise;
               });
             });
@@ -107,22 +155,69 @@ class Cli {
       )
     ];
     
-    var command = args.shift();
-    
-    for (canditate in commands)
-      if (canditate.name == command) {
-        canditate.exec(args).handle(function (o) Sys.exit(switch o {
-          case Failure(e):
-            process.stderr.write(e.message);
-            e.code;
-          default:
-            0;
-        }));
-        return;
-      }
-      
-    process.stderr.write('unknown command $command');
-    Sys.exit(404);    
+    switch args.shift() {
+      case null:
+        println('switchx - haxe version switcher');
+        println('');
+        var prefix = 0;
+        
+        for (c in commands) {
+          var cur = c.name.length + c.args.length;
+          if (cur > prefix)
+            prefix = cur;
+        }
+        
+        prefix += 7;
+        
+        var prefix = [for (i in 0...prefix) ' '].join('');
+        
+        function pad(s:String)
+          return s.lpad(' ', prefix.length);
+          
+        println('  Supported commands:');
+        println('');
+        
+        for (c in commands) {
+          var s = '  ' + c.name+' ' + c.args + ' : ';
+          println(pad(s) + c.doc.replace('\n', '\n$prefix'));
+        }
+        
+        println('');
+        println('  Supported switches:');
+        println('');
+        println(pad('--silent : ') + 'disables logging');
+        println(pad('--global : ') + 'performs operation on global scope');
+        println(pad('--force : ') + 'forces re-download');
+        println('');
+        println('  Version aliases:');
+        println('');
+        println(pad('edge, nightly : ') + 'latest nightly build from builds.haxe.org');
+        println(pad('latest : ') + 'latest official release from haxe.org');
+        println(pad('stable : ') + 'latest stable release from haxe.org');
+        println('');
+        exit(0);
+        
+      case command:
+        
+        for (canditate in commands)
+          if (canditate.name == command) {
+            canditate.exec(args).handle(function (o) switch o {
+              case Failure(e):
+                process.stderr.write(e.message + '\n\n');
+                exit(e.code);
+              default:
+                if (cb != null) {
+                  cb();
+                  return;
+                }
+                exit(0);
+            });
+            return;
+          }
+          
+        process.stderr.write('unknown command $command\n\n');
+        exit(404);    
+    }    
   }
   
 }

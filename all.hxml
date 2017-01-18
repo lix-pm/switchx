@@ -1,0 +1,3 @@
+-scoped-hxml lib/haxeshim/all.hxml
+--next
+switchx.hxml
