@@ -1,9 +1,9 @@
 package switchx;
 
 import haxe.io.Bytes;
-import haxe.io.Path;
-using sys.io.File;
 
+using sys.io.File;
+using haxe.io.Path;
 using switchx.Version;
 using tink.CoreApi;
 using DateTools;
@@ -19,19 +19,14 @@ enum PickOfficial {
 class Switchx {
   
   var scope:haxeshim.Scope;
-  var haxelibs:String;
-  var versions:String;
   var downloads:String;
-  
-  var root(get, never):String;
-    function get_root() return scope.haxeshimRoot;
     
   public function new(scope) {
     this.scope = scope;
     
-    Fs.ensureDir(this.versions = '$root/versions/');
-    Fs.ensureDir(this.downloads = '$root/downloads/');
-    Fs.ensureDir(this.haxelibs = '$root/haxelibs/');
+    Fs.ensureDir(scope.versionDir.addTrailingSlash());
+    Fs.ensureDir(scope.haxelibRepo.addTrailingSlash());
+    Fs.ensureDir(this.downloads = scope.haxeshimRoot + '/downloads/');
   }
   
   static var VERSION_INFO = 'version.json';  
@@ -95,8 +90,8 @@ class Switchx {
     return 
       attempt(
         'Get installed Haxe versions', 
-        sortedOfficial(kind, [for (v in versions.readDirectory())
-          if (!v.isHash() && '$versions/$v'.isDirectory()) v
+        sortedOfficial(kind, [for (v in scope.versionDir.readDirectory())
+          if (!v.isHash() && versionDir(v).isDirectory()) v
         ])
       );
   
@@ -111,9 +106,9 @@ class Switchx {
     return 
       attempt(
         'get installed Haxe versions', 
-        sortedNightlies([for (v in versions.readDirectory().filter(UserVersion.isHash)) {
+        sortedNightlies([for (v in scope.versionDir.readDirectory().filter(UserVersion.isHash)) {
           hash:v, 
-          published: Date.fromString('$versions/$v/$VERSION_INFO'.getContent().parse().published)
+          published: Date.fromString('${versionDir(v)}/$VERSION_INFO'.getContent().parse().published)
         }])
       );
     
@@ -173,8 +168,11 @@ class Switchx {
         );
     }  
     
+  function versionDir(name:String)
+    return scope.getInstallation(name).path;
+    
   function isDownloaded(r:ResolvedVersion)
-    return '$versions/${r.id}'.exists();
+    return versionDir(r.id).exists();
     
   function linkToOfficial(version)
     return 
@@ -184,7 +182,7 @@ class Switchx {
         default: 'linux64.tar.gz';
       }
   
-  function replace(target:String, replacement:String, archiveAs:String)
+  function replace(target:String, replacement:String, archiveAs:String) 
     if (target.exists()) {
       var old = '$downloads/$archiveAs@${Math.floor(target.stat().ctime.getTime())}';
       target.rename(old);
@@ -207,7 +205,7 @@ class Switchx {
             published: date.toString(),
           }));
           
-          replace('$versions/$hash', dir, hash);
+          replace(versionDir(hash), dir, hash);
           return true;
         });
         
@@ -224,8 +222,8 @@ class Switchx {
               Download.tar(url, 1, tmp);
           }
           
-        ret.next(function (dir) {
-          replace('$versions/$version', dir, version);
+        ret.next(function (v) {
+          replace(versionDir(version), v, version);
           return true;
         });
     }  

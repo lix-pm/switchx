@@ -20,7 +20,7 @@ class Cli {
         version: 'stable',
         resolveLibs: Mixed,
       });
-      dispatch(['install', '--global', '--silent'], function () {
+      dispatch(['install', '--global'], function () {
         dispatch(args());
       });
       return;
@@ -61,7 +61,7 @@ class Cli {
     
     function switchTo(version:ResolvedVersion)
       return api.switchTo(version).next(function (v) {
-        log('Switched to $version');
+        log('Now using $version');
         return v;
       });
     
@@ -71,7 +71,7 @@ class Cli {
           case [v]:
             download(v).next(switchTo);
           case []:
-            download(scope.config.version);
+            download(scope.config.version).next(switchTo);
           case v:
             new Error('command `install` accepts one argument at most (i.e. the version)');
         }
