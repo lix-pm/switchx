@@ -15,11 +15,15 @@ class Cli {
   static function main() {
     if (!Scope.exists(Scope.DEFAULT_ROOT)) {
       
-      Fs.ensureDir(Scope.DEFAULT_ROOT+'/');
+      println("It seems you're running switchx for the first time.\nPlease wait for basic setup to finish ...");
+      
+      Fs.ensureDir(Scope.DEFAULT_ROOT + '/');
+      
       Scope.create(Scope.DEFAULT_ROOT, {
         version: 'stable',
         resolveLibs: Mixed,
       });
+      
       dispatch(['install', '--global'], function () {
         dispatch(args());
       });
