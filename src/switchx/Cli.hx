@@ -1,6 +1,7 @@
 package switchx;
 
 import haxeshim.*;
+import haxeshim.LibResolution;
 import js.Node.*;
 import Sys.*;
 import switchx.Version;
@@ -65,7 +66,7 @@ class Cli {
       });
     
     var commands = [
-      new Command('install', '[<version>]', 'installs the version if specified,\notherwise installs the currently configured version', 
+      new Command('install', '[<version>]', 'installs the version if specified, otherwise\ninstalls the currently configured version', 
         function (args) return switch args {
           case [v]:
             download(v).next(switchTo);
@@ -86,6 +87,28 @@ class Cli {
         function (args) return switch args {
           case [v]: api.resolveInstalled(v).next(switchTo);
           case []: new Error('not enough arguments');
+          case v: new Error('too many arguments');
+        }
+      ),
+      new Command('libs', '[scoped|mixed|haxelib]', 'sets library resolution strategy',
+        function (args) return switch args {
+          case []: new Error('not enough arguments');
+          case [v]: 
+            
+            var options = [
+              'scoped' => Scoped,
+              'mixed' => Mixed,
+              'haxelib' => Haxelib,
+            ];
+            
+            if (options.exists(v)) {
+              scope.reconfigure({
+                version: scope.config.version,
+                resolveLibs: options[v]
+              });
+              Noise;
+            }
+            else new Error('unknown strategy $v');
           case v: new Error('too many arguments');
         }
       ),

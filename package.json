@@ -1,6 +1,6 @@
 {
   "name": "switchx",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "bin": {
     "switchx": "bin/switchx.js",
     "haxe": "bin/haxeshim.js",
@@ -14,6 +14,10 @@
   "scripts": {
     "postinstall": "switchx list && node bin/postinstall.js"
   },
+  "dependencies": {
+    "tar": "=2.2.1",
+    "yauzl": "=2.6.0"
+  },  
   "keywords": [
     "haxe"
   ],
