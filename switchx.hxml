@@ -1,4 +1,3 @@
--lib haxeshim
--cp src
+lib.hxml
 -js bin/switchx.js
 -main switchx.Cli

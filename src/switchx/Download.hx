@@ -114,14 +114,24 @@ class Download {
       
       req.on(ClientRequestEvent.Response, function (res) {
         
-        res.on('error', fail);
-        
-        handler(res, function (v) {
-          switch v {
-            case Success(x): cb(Success(x));
-            case Failure(e): cb(Failure(e));
-          }
-        });
+        switch res.headers['location'] {
+          case null:
+            res.on('error', fail);
+            
+            handler(res, function (v) {
+              switch v {
+                case Success(x): cb(Success(x));
+                case Failure(e): cb(Failure(e));
+              }
+            });
+          case v:
+            
+            download(switch Url.parse(v) {
+              case { protocol: null }:
+                options.protocol + '//' + options.host + v;
+              default: v;
+            }, handler).handle(cb);
+        }
       });
     });
     
