@@ -101,6 +101,9 @@ class Download {
       var options:HttpRequestOptions = cast Url.parse(url);
       
       options.agent = false;
+      if (options.headers == null)
+        options.headers = {};
+      options.headers['user-agent'] = Download.USER_AGENT;
       
       function fail(e:js.Error)
         cb(Failure(tink.core.Error.withData('Failed to download $url because ${e.message}', e)));
@@ -135,4 +138,5 @@ class Download {
       });
     });
     
+  static public var USER_AGENT = 'switchx';
 }
