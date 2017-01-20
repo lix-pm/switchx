@@ -69,7 +69,7 @@ class Cli {
         return v;
       });
     
-    var commands = [
+    Command.dispatch(args, 'switchx - haxe version switcher', [
       new Command('install', '[<version>]', 'installs the version if specified, otherwise\ninstalls the currently configured version', 
         function (args) return switch args {
           case [v]:
@@ -180,90 +180,18 @@ class Cli {
             new Error('command `list` does expect arguments');
         }
       )
-    ];
-    
-    switch args.shift() {
-      case null:
-        println('switchx - haxe version switcher');
-        println('');
-        var prefix = 0;
-        
-        for (c in commands) {
-          var cur = c.name.length + c.args.length;
-          if (cur > prefix)
-            prefix = cur;
-        }
-        
-        prefix += 7;
-        
-        var prefix = [for (i in 0...prefix) ' '].join('');
-        
-        function pad(s:String)
-          return s.lpad(' ', prefix.length);
-          
-        println('  Supported commands:');
-        println('');
-        
-        for (c in commands) {
-          var s = '  ' + c.name+' ' + c.args + ' : ';
-          println(pad(s) + c.doc.replace('\n', '\n$prefix'));
-        }
-        
-        println('');
-        println('  Supported switches:');
-        println('');
-        println(pad('--silent : ') + 'disables logging');
-        println(pad('--global : ') + 'performs operation on global scope');
-        println(pad('--force : ') + 'forces re-download');
-        println('');
-        println('  Version aliases:');
-        println('');
-        println(pad('edge, nightly : ') + 'latest nightly build from builds.haxe.org');
-        println(pad('latest : ') + 'latest official release from haxe.org');
-        println(pad('stable : ') + 'latest stable release from haxe.org');
-        println('');
-        exit(0);
-        
-      case command:
-        
-        for (canditate in commands)
-          if (canditate.name == command) {
-            canditate.exec(args).handle(function (o) switch o {
-              case Failure(e):
-                process.stderr.write(e.message + '\n\n');
-                exit(e.code);
-              default:
-                if (cb != null) {
-                  cb();
-                  return;
-                }
-                exit(0);
-            });
-            return;
-          }
-          
-        process.stderr.write('unknown command $command\n\n');
-        exit(404);    
-    }    
+    ], [
+      new Named('Supported switches', [
+        new Named('--silent', 'disables logging'),
+        new Named('--global', 'performs operation on global scope'),
+        new Named('--force', 'forces re-download'),
+      ]),
+      new Named('Version aliases', [
+        new Named('edge, nightly', 'latest nightly build from builds.haxe.org'),
+        new Named('latest', 'latest official release from haxe.org'),
+        new Named('stable', 'latest stable release from haxe.org'),
+      ])
+    ]).handle(Command.reportError);
   }
   
 }
-
-class Command {
-  
-  public var name(default, null):String;
-  public var args(default, null):String;
-  public var doc(default, null):String;
-  public var exec(default, null):Array<String>->Promise<Noise>;
-  
-  public function new(name, args, doc, exec) {
-    this.name = name;
-    this.args = args;
-    this.doc = doc;
-    this.exec = exec;
-  }
-}
-
-//class Install {
-  //static public function run(args:Array<String>)
-//}
