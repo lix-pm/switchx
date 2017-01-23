@@ -2,9 +2,7 @@
   "name": "switchx",
   "version": "0.10.4",
   "bin": {
-    "switchx": "bin/switchx.js",
-    "haxe": "bin/haxeshim.js",
-    "haxelib": "bin/haxelibshim.js"
+    "switchx": "bin/switchx.js"
   },
   "description": "Switch Haxe versions like a sir.",
   "repository": {
