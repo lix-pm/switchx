@@ -33,7 +33,7 @@ Note that in `switch` version aliases refer to the latest *installed* version of
 
 ## Installation
 
-Not as smooth as it could be, but `npm install switchx -g && switchx` basically kind of does it. 
+Not as smooth as it could be, but `npm install haxeshim -g && npm install switchx -g && switchx` basically kind of does it. 
 
 ## OS support
 

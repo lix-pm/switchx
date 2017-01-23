@@ -1,6 +1,6 @@
 {
   "name": "switchx",
-  "version": "0.10.1",
+  "version": "0.10.3",
   "bin": {
     "switchx": "bin/switchx.js",
     "haxe": "bin/haxeshim.js",
@@ -10,9 +10,6 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/lix-pm/switchx.git"
-  },
-  "scripts": {
-    "postinstall": "node bin/postinstall.js"
   },
   "dependencies": {
     "tar": "=2.2.1",

@@ -18,7 +18,7 @@ enum PickOfficial {
 
 class Switchx {
   
-  var scope:haxeshim.Scope;
+  public var scope(default, null):haxeshim.Scope;
   var downloads:String;
     
   public function new(scope) {
