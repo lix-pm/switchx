@@ -22,6 +22,33 @@ class Fs {
     if (isDir && !dir.exists()) 
       dir.createDirectory();
   }
+
+  static public function copy(src:String, target:String) {
+    function copy(src:String, target:String, ensure:Bool) 
+      if (src.isDirectory()) {
+        
+        Fs.ensureDir(target.addTrailingSlash());
+
+        for (entry in src.readDirectory())
+          copy('$src/$entry', '$target/$entry', false);
+
+      }
+      else {
+        if (ensure)
+          Fs.ensureDir(target);
+        sys.io.File.copy(src, target);
+      }
+    
+    copy(src, target, true);
+  }
+
+  static public function delete(path:String) 
+    if (path.isDirectory()) {
+      for (file in path.readDirectory()) 
+        delete('$path/$file');
+      path.deleteDirectory();
+    }
+    else path.deleteFile();
   
   static public function peel(file:String, depth:Int) {
     var start = 0;
