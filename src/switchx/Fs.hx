@@ -23,21 +23,28 @@ class Fs {
       dir.createDirectory();
   }
 
-  static public function copy(src:String, target:String) {
+  static public function ifNewer(files:{ src:String, dest:String }) 
+    return files.src.stat().mtime.getTime() > files.dest.stat().mtime.getTime();
+
+  static public function copy(src:String, target:String, ?filter:String->Bool, ?overwrite:{ src:String, dest:String }->Bool) {
+
     function copy(src:String, target:String, ensure:Bool) 
-      if (src.isDirectory()) {
-        
-        Fs.ensureDir(target.addTrailingSlash());
+      if (filter == null || filter(src)) 
+        if (src.isDirectory()) {
+          
+          Fs.ensureDir(target.addTrailingSlash());
 
-        for (entry in src.readDirectory())
-          copy('$src/$entry', '$target/$entry', false);
+          for (entry in src.readDirectory())
+            copy('$src/$entry', '$target/$entry', false);
 
-      }
-      else {
-        if (ensure)
-          Fs.ensureDir(target);
-        sys.io.File.copy(src, target);
-      }
+        }
+        else {
+          if (ensure)
+            Fs.ensureDir(target);
+
+          if (!target.exists() || overwrite == null || overwrite({ src: src, dest: target }))
+            sys.io.File.copy(src, target);
+        }
     
     copy(src, target, true);
   }
