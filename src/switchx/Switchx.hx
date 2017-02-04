@@ -179,7 +179,11 @@ class Switchx {
       'http://haxe.org/website-content/downloads/$version/downloads/haxe-$version-' + switch Sys.systemName() {
         case 'Windows': 'win.zip';
         case 'Mac': 'osx.tar.gz';
-        default: 'linux64.tar.gz';
+        default: 
+          if (version < "3")
+            'linux.tar.gz';
+          else
+            'linux64.tar.gz';
       }
   
   function replace(target:String, replacement:String, archiveAs:String) 
