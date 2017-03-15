@@ -20,11 +20,15 @@ class Command {
     this.exec = exec;
   }
   
-  static public function reportError(o:Outcome<Noise, Error>)
+  static public function reportError(e:Error):Dynamic {
+    stderr().writeString(e.message + '\n\n');
+    Sys.exit(e.code);    
+    return null;
+  }
+
+  static public function reportOutcome(o:Outcome<Noise, Error>)
     switch o {
-      case Failure(e):
-        stderr().writeString(e.message + '\n\n');
-        Sys.exit(e.code);
+      case Failure(e): reportError(e);
       default:
     }
   

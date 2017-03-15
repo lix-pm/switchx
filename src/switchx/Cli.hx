@@ -9,27 +9,56 @@ import switchx.Version;
 using DateTools;
 using tink.CoreApi;
 using StringTools;
+using sys.FileSystem;
 
 class Cli {
+  static function ensureGlobal() 
+    return 
+      Future.async(function (cb) {
+
+        function done() 
+          cb(Scope.seek());
+
+        if (Scope.exists(Scope.DEFAULT_ROOT)) done();
+        else {
+          
+          println("It seems you're running switchx for the first time.\nPlease wait for basic setup to finish ...");
+          
+          Fs.ensureDir(Scope.DEFAULT_ROOT + '/');
+          
+          Scope.create(Scope.DEFAULT_ROOT, {
+            version: 'stable',
+            resolveLibs: Mixed,
+          });
+          
+          dispatch(['install', '--global'], function () {
+            println('... done setting up global Haxe version');
+            done();
+          });
+        }
+      });
+
+  static function ensureNeko(global:Scope) {
+
+    var neko = global.haxeInstallation.nekoPath;
+
+    return
+      if (neko.exists()) 
+        Future.sync(neko);
+      else {
+        
+        println('Neko seems to be missing. Attempting download');
+
+        (switch systemName() {
+          case 'Windows': Download.zip.bind('http://nekovm.org/media/neko-2.1.0-win.zip');
+          case 'Mac': Download.tar.bind('http://nekovm.org/media/neko-2.1.0-osx64.tar.gz');
+          default: Download.tar.bind('http://nekovm.org/media/neko-2.1.0-linux64.tar.gz');
+        })(1, global.haxeInstallation.nekoPath).recover(Command.reportError);
+      }
+  }
 
   static function main() {
-    if (!Scope.exists(Scope.DEFAULT_ROOT)) {
-      
-      println("It seems you're running switchx for the first time.\nPlease wait for basic setup to finish ...");
-      
-      Fs.ensureDir(Scope.DEFAULT_ROOT + '/');
-      
-      Scope.create(Scope.DEFAULT_ROOT, {
-        version: 'stable',
-        resolveLibs: Mixed,
-      });
-      
-      dispatch(['install', '--global'], function () {
-        dispatch(args());
-      });
-      return;
-    }
-    dispatch(args());
+    ensureGlobal().flatMap(ensureNeko).handle(dispatch.bind(args()));
   }
   
   static function dispatch(args:Array<String>, ?cb) {
@@ -191,7 +220,10 @@ class Cli {
         new Named('latest', 'latest official release from haxe.org'),
         new Named('stable', 'latest stable release from haxe.org'),
       ])
-    ]).handle(Command.reportError);
+    ]).handle(function (o) {
+      Command.reportOutcome(o);
+      if (cb != null) cb();
+    });
   }
   
 }
