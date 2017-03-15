@@ -11,7 +11,8 @@ install:
 
   - npm install haxeshim -g
   - npm install . -g
+  - switchx install
 
 script:
 
-  - switchx install
+  - switchx list
