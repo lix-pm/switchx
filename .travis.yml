@@ -1,0 +1,17 @@
+sudo: required
+dist: trusty
+
+language: node_js
+node_js: 6
+
+os:
+  - linux
+    
+install:
+
+  - npm install haxeshim -g
+  - npm install . -g
+
+script:
+
+  - switchx install
