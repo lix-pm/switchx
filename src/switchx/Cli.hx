@@ -75,9 +75,19 @@ class Cli {
     var force = args.remove('--force');
     
     function download(version:String) {
-      log('Looking up Haxe version "$version"');
-      return api.resolveOnline(version).next(function (r) {
-        log('  Resolved to $r. Downloading ...');
+
+      return (switch ((version : UserVersion) : UserVersionData) {
+        case UNightly(_) | UOfficial(_): 
+          api.resolveInstalled(version);
+        default: 
+          Promise.lift(new Error('$version needs to be resolved online'));
+      }).tryRecover(function (_) {
+        log('Looking up Haxe version "$version" online');
+        return api.resolveOnline(version).next(function (r) {
+          log('  Resolved to $r. Downloading ...');
+          return r;
+        });
+      }).next(function (r) {
         return api.download(r, { force: force }).next(function (wasDownloaded) {
           
           log(
