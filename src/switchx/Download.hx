@@ -22,7 +22,7 @@ class Download {
     return bytes(url).next(function (b) return b.toString());
     
   static public function bytes(url:String):Promise<Bytes> 
-    return download(url, function (r, cb) buffered(r).handle(cb));
+    return download(url, function (_, r, cb) buffered(r).handle(cb));
     
   static function buffered(r:IncomingMessage):Promise<Bytes> 
     return Future.async(function (cb) {
@@ -34,8 +34,8 @@ class Download {
     });
     
   static public function archive(url:String, peel:Int, into:String) {
-    return download(url, function (res, cb) {
-      if (res.headers['content-type'] == 'application/zip')
+    return download(url, function (url:String, res, cb) {
+      if (res.headers['content-type'] == 'application/zip' || url.endsWith('.zip'))
         unzip(url, into, peel, res, cb);
       else
         untar(url, into, peel, res, cb);
@@ -89,13 +89,13 @@ class Download {
   }
   
   static public function tar(url:String, peel:Int, into:String):Promise<Directory>
-    return download(url, untar.bind(url, into, peel));
+    return download(url, untar.bind(_, into, peel));
 
     
   static public function zip(url:String, peel:Int, into:String):Promise<Directory>
-    return download(url, unzip.bind(url, into, peel));
+    return download(url, unzip.bind(_, into, peel));
       
-  static function download<T>(url:String, handler:IncomingMessage->(Outcome<T, Error>->Void)->Void):Promise<T>
+  static function download<T>(url:String, handler:String->IncomingMessage->(Outcome<T, Error>->Void)->Void):Promise<T>
     return Future.async(function (cb) {
       
       var options:HttpRequestOptions = cast Url.parse(url);
@@ -121,7 +121,7 @@ class Download {
           case null:
             res.on('error', fail);
             
-            handler(res, function (v) {
+            handler(url, res, function (v) {
               switch v {
                 case Success(x): cb(Success(x));
                 case Failure(e): cb(Failure(e));
