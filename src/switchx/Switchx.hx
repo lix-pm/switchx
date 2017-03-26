@@ -10,6 +10,7 @@ using DateTools;
 using StringTools;
 using sys.FileSystem;
 using haxe.Json;
+using switchx.Fs;
 
 enum PickOfficial {
   StableOnly;
@@ -186,7 +187,17 @@ class Switchx {
             'linux64.tar.gz';
       }
   
-  function replace(target:String, replacement:String, archiveAs:String) 
+  function replace(target:String, replacement:String, archiveAs:String) {
+    var root = replacement;
+    
+    while (true) 
+      switch replacement.ls(FileSystem.isDirectory) {
+        case [sub]: 
+          if (sub.withoutDirectory() == 'std') break;
+          else replacement = sub;
+        default: break;
+      }
+    
     if (target.exists()) {
       var old = '$downloads/$archiveAs@${Math.floor(target.stat().ctime.getTime())}';
       target.rename(old);
@@ -195,6 +206,10 @@ class Switchx {
     else {
       replacement.rename(target);
     }
+
+    if (root.exists())
+      root.delete();
+  }
       
   public function download(version:ResolvedVersion, options:{ force: Bool }):Promise<Bool>
     return switch version {
@@ -204,7 +219,7 @@ class Switchx {
         
       case RNightly({ hash: hash, published: date }):
         
-        Download.tar(linkToNightly(hash, date), 1, '$downloads/$hash@${Math.floor(Date.now().getTime())}').next(function (dir) {
+        Download.tar(linkToNightly(hash, date), 0, '$downloads/$hash@${Math.floor(Date.now().getTime())}').next(function (dir) {
           '$dir/$VERSION_INFO'.saveContent(haxe.Json.stringify({
             published: date.toString(),
           }));
@@ -221,9 +236,9 @@ class Switchx {
         var ret = 
           switch Path.extension(url) {
             case 'zip': 
-              Download.zip(url, 1, tmp);
+              Download.zip(url, 0, tmp);
             default:
-              Download.tar(url, 1, tmp);
+              Download.tar(url, 0, tmp);
           }
           
         ret.next(function (v) {

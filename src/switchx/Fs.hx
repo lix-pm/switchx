@@ -48,11 +48,18 @@ class Fs {
     
     copy(src, target, true);
   }
+  
+  static public function ls(dir:String, ?filter:String->Bool) {
+    return [for (entry in dir.readDirectory()) switch '$dir/$entry' {
+      case included if (filter == null || filter(included)): included;
+      default: continue;
+    }];
+  }
 
   static public function delete(path:String) 
     if (path.isDirectory()) {
-      for (file in path.readDirectory()) 
-        delete('$path/$file');
+      for (file in ls(path)) 
+        delete(file);
       path.deleteDirectory();
     }
     else path.deleteFile();
