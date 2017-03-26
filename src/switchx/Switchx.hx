@@ -187,17 +187,19 @@ class Switchx {
             'linux64.tar.gz';
       }
   
-  function replace(target:String, replacement:String, archiveAs:String) {
+  function replace(target:String, replacement:String, archiveAs:String, ?beforeReplace) {
     var root = replacement;
     
     while (true) 
-      switch replacement.ls(FileSystem.isDirectory) {
+      switch replacement.ls() {
         case [sub]: 
-          if (sub.withoutDirectory() == 'std') break;
-          else replacement = sub;
+          replacement = sub;
         default: break;
       }
     
+    if (beforeReplace != null)
+      beforeReplace(replacement);
+
     if (target.exists()) {
       var old = '$downloads/$archiveAs@${Math.floor(target.stat().ctime.getTime())}';
       target.rename(old);
@@ -220,11 +222,11 @@ class Switchx {
       case RNightly({ hash: hash, published: date }):
         
         Download.tar(linkToNightly(hash, date), 0, '$downloads/$hash@${Math.floor(Date.now().getTime())}').next(function (dir) {
-          '$dir/$VERSION_INFO'.saveContent(haxe.Json.stringify({
-            published: date.toString(),
-          }));
-          
-          replace(versionDir(hash), dir, hash);
+          replace(versionDir(hash), dir, hash, function (dir) {
+            '$dir/$VERSION_INFO'.saveContent(haxe.Json.stringify({
+              published: date.toString(),
+            }));
+          });
           return true;
         });
         
