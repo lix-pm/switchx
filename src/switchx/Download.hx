@@ -116,26 +116,28 @@ class Download {
       req.on('error', fail);
       
       req.on(ClientRequestEvent.Response, function (res) {
-        
-        switch res.headers['location'] {
-          case null:
-            res.on('error', fail);
-            
-            handler(url, res, function (v) {
-              switch v {
-                case Success(x): cb(Success(x));
-                case Failure(e): cb(Failure(e));
-              }
-            });
-          case v:
-            
-            download(switch Url.parse(v) {
-              case { protocol: null }:
-                options.protocol + '//' + options.host + v;
-              default: v;
-            }, handler).handle(cb);
-        }
-      });
+        if (res.statusCode >= 400) 
+          cb(Failure(Error.withData(res.statusCode, res.statusMessage, res)));
+        else
+          switch res.headers['location'] {
+            case null:
+              res.on('error', fail);
+              
+              handler(url, res, function (v) {
+                switch v {
+                  case Success(x): cb(Success(x));
+                  case Failure(e): cb(Failure(e));
+                }
+              });
+            case v:
+              
+              download(switch Url.parse(v) {
+                case { protocol: null }:
+                  options.protocol + '//' + options.host + v;
+                default: v;
+              }, handler).handle(cb);
+          }
+        });
     });
     
   static public var USER_AGENT = 'switchx';
