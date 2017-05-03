@@ -6,9 +6,84 @@ import Sys.*;
 using StringTools;
 using tink.CoreApi;
 
+abstract CommandExpander(Array<String>->Option<Array<String>>) from Array<String>->Option<Array<String>> {
+  
+  public inline function expand(args:Array<String>) 
+    return this(args);
+
+  @:from static public function ofString(s:String):CommandExpander 
+    return switch s.indexOf(' ') {
+      case -1: 
+        throw 'invalid expander syntax in "$s"';
+      case v:
+        make(s.substr(0, v), s.substr(v + 1));
+    }
+  
+  static public function make(prefix:String, rule:String):CommandExpander {
+
+    var replacer = ~/\$\{([0-9]+)\}/g;
+    var parts = [];
+    var highest = -1;
+    replacer.map(rule, function (e) {
+      
+      parts.pop();
+                
+      var left = e.matchedLeft(),
+          right = e.matchedRight();
+        
+      parts.push(function (_) return left);
+      
+      var pos = Std.parseInt(e.matched(1));
+      
+      if (pos > highest)
+        highest = pos;
+      
+      parts.push(function (args:Array<String>) return args[pos]);
+      parts.push(function (_) return right);
+      
+      return '';
+    });
+    
+    function apply(args:Array<String>) 
+      return 
+        [for (res in [for (p in parts) p(args)].join('').split(' ')) 
+          switch res.trim() {
+            case '': continue;
+            case v: v;
+          }
+        ];
+    
+    return function (args:Array<String>) {
+      for (i in 0...args.length)
+        if (args[i] == prefix) 
+          return Some(
+            args.slice(0, i)
+              .concat(apply(args.slice(i + 1, i + highest + 2)))
+              .concat(args.slice(i + highest + 2))
+          );
+      return None;
+    }
+  }
+}
+
+abstract CommandName(Array<String>) from Array<String> {
+
+  @:from static function ofString(s:String):CommandName
+    return [s];
+
+  @:to public function toString()
+    return switch this {
+      case [v]: v;
+      case a: a.join(' / ');
+    }
+
+  @:op(a == b) static public function eq(a:CommandName, b:String)
+    return (cast a : Array<String>).indexOf(b) != -1;
+}
+
 class Command {
   
-  public var name(default, null):String;
+  public var name(default, null):CommandName;
   public var args(default, null):String;
   public var doc(default, null):String;
   public var exec(default, null):Array<String>->Promise<Noise>;
@@ -32,6 +107,22 @@ class Command {
       default:
     }
   
+  static public function expand(args:Array<String>, expanders:Array<CommandExpander>) {
+    var changed = true;
+    while (changed) {
+      changed = false;
+
+      for (e in expanders) 
+        switch e.expand(args) {
+          case Some(nu): 
+            args = nu;
+            changed = true;
+          default:
+        }
+    }
+    return args;
+  }
+
   static public function dispatch(args:Array<String>, title:String, commands:Array<Command>, extras:Array<Named<Array<Named<String>>>>):Promise<Noise> 
     return 
       switch args.shift() {
@@ -41,7 +132,7 @@ class Command {
           var prefix = 0;
           
           for (c in commands) {
-            var cur = c.name.length + c.args.length;
+            var cur = c.name.toString().length + c.args.length;
             if (cur > prefix)
               prefix = cur;
           }
@@ -57,7 +148,7 @@ class Command {
           println('');
           
           for (c in commands) {
-            var s = '  ' + c.name+' ' + c.args + ' : ';
+            var s = '  ' + c.name + (switch c.args { case '': ''; case v: ' $v'; }) + ' : ';
             println(pad(s) + c.doc.replace('\n', '\n$prefix'));
           }
           
