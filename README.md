@@ -45,4 +45,5 @@ Ah, here comes the fun part. The simplest way right now is to:
   
 1. install `switchx` first (through npm)
 2. clone the source recursively and then run `switchx install` in the checked out directory
-3. build with `haxe all.hxml`.
+3. install node dependencies with `npm install`
+4. build with `haxe switchx.hxml`.
