@@ -71,11 +71,14 @@ class Switchx {
             if (v.indexOf('_development_') != -1)
               switch v.indexOf('   ') {
                 case -1: //whatever
-                case v.substr(0, _).split(' ') => [_.split('-').map(Std.parseInt) => [y, m, d], _.split(':').map(Std.parseInt) => [hh, mm]]:
+                case v.substr(0, _).split(' ') => [
+                  _.split('-').map(Std.parseInt) => [y, m, d], 
+                  _.split(':').map(Std.parseInt) => [hh, mm, ss]
+                ]:
                   
                   ret.push({
                     hash: v.split('_development_').pop().split('.').shift(),
-                    published: new Date(y, m - 1, d, hh, mm, 0),
+                    published: new Date(y, m - 1, d, hh, mm, ss),
                   });
                   
                 default:
