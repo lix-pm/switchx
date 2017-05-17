@@ -39,8 +39,13 @@ class Switchx {
       default: 'linux64';
     } 
   
-  static function linkToNightly(hash:String, date:Date)
-    return date.format('$NIGHTLIES/$PLATFORM/haxe_%Y-%m-%d_development_$hash.tar.gz');
+  static function linkToNightly(hash:String, date:Date) {
+    var extension = 
+      // Windows builds are distributed as a zip file since 2017-05-11
+      if (PLATFORM == 'windows' && date.getTime() > 1494460800000) 'zip'
+      else 'tar.gz';
+    return date.format('$NIGHTLIES/$PLATFORM/haxe_%Y-%m-%d_development_$hash.$extension');
+  }
   
   static function sortedOfficial(kind:PickOfficial, versions:Array<Official>):Iterable<Official> {
     if (kind == StableOnly)
@@ -216,7 +221,14 @@ class Switchx {
       root.delete();
   }
       
-  public function download(version:ResolvedVersion, options:{ force: Bool }):Promise<Bool>
+  public function download(version:ResolvedVersion, options:{ force: Bool }):Promise<Bool> {
+    
+    inline function downloadArchive(url, peel, into)
+      return switch Path.extension(url) {
+        case 'zip': Download.zip(url, peel, into);
+        default: Download.tar(url, peel, into);
+      }
+    
     return switch version {
       case isDownloaded(_) => true if (options.force != true):
         
@@ -224,7 +236,7 @@ class Switchx {
         
       case RNightly({ hash: hash, published: date }):
         
-        Download.tar(linkToNightly(hash, date), 0, '$downloads/$hash@${Math.floor(Date.now().getTime())}').next(function (dir) {
+        downloadArchive(linkToNightly(hash, date), 0, '$downloads/$hash@${Math.floor(Date.now().getTime())}').next(function (dir) {
           replace(versionDir(hash), dir, hash, function (dir) {
             '$dir/$VERSION_INFO'.saveContent(haxe.Json.stringify({
               published: date.toString(),
@@ -238,18 +250,13 @@ class Switchx {
         var url = linkToOfficial(version),
             tmp = '$downloads/$version@${Math.floor(Date.now().getTime())}';
             
-        var ret = 
-          switch Path.extension(url) {
-            case 'zip': 
-              Download.zip(url, 0, tmp);
-            default:
-              Download.tar(url, 0, tmp);
-          }
+        var ret = downloadArchive(url, 0, tmp);
           
         ret.next(function (v) {
           replace(versionDir(version), v, version);
           return true;
         });
     }  
+  }
   
 }
