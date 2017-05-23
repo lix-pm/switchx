@@ -2,3 +2,4 @@
 -cp src
 -js bin/switchx.js
 -main switchx.Cli
+--macro haxeshim.Build.postprocess()
