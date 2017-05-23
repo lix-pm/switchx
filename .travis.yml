@@ -9,7 +9,7 @@ os:
     
 install:
   - npm install haxeshim -g
-  - npm install lix -g
+  - npm install lix.pm -g
   - lix download
   - haxe switchx.hxml
   - npm install . -g
