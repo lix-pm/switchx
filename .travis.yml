@@ -10,7 +10,7 @@ os:
 install:
   - npm install haxeshim -g
   - npm install switchx -g
-  - switchx download
+  - switchx scope
   - haxe switchx.hxml
   - npm install . -g
   - switchx install
