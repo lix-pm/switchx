@@ -9,11 +9,10 @@ os:
     
 install:
   - npm install haxeshim -g
-  - npm install switchx -g
-  - switchx scope
+  - npm install lix -g
+  - lix download
   - haxe switchx.hxml
   - npm install . -g
-  - switchx install
 
 script:
 
