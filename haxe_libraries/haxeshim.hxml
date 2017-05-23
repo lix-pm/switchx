@@ -1,1 +1,6 @@
--scoped-hxml lib/haxeshim/common.hxml
+# @install: lix --silent download https://github.com/lix-pm/haxeshim/archive/c8ac68ab851fb20b6b2233bfe3b1b3297d6c9061.tar.gz into haxeshim/0.0.0/github/c8ac68ab851fb20b6b2233bfe3b1b3297d6c9061
+-D haxeshim=0.0.0
+-cp ${HAXESHIM_LIBCACHE}/haxeshim/0.0.0/github/c8ac68ab851fb20b6b2233bfe3b1b3297d6c9061/src
+
+-lib tink_core
+-lib hxnodejs
