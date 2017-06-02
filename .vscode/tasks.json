@@ -2,5 +2,5 @@
     "version": "0.1.0",
     "command": "haxe",
     "args": ["switchx.hxml", "--next", "-cmd", "node bin/switchx.js list"],
-    "problemMatcher": "$haxe",
+    "problemMatcher": "$haxe"
 }
