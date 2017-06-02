@@ -1,6 +1,7 @@
 package switchx;
 
 using StringTools;
+using haxe.io.Path;
 
 enum UserVersionData {
   UEdge;
@@ -8,7 +9,7 @@ enum UserVersionData {
   UStable;
   UNightly(hash:String);
   UOfficial(version:Official);
-  
+  UCustom(path:String);
 }
 
 abstract Official(String) from String to String {
@@ -58,6 +59,7 @@ abstract Official(String) from String to String {
 enum ResolvedUserVersionData {
   RNightly(nightly:Nightly);
   ROfficial(version:Official);
+  RCustom(path:String);
 }
 
 typedef Nightly = {
@@ -72,14 +74,11 @@ abstract ResolvedVersion(ResolvedUserVersionData) from ResolvedUserVersionData t
     function get_id()
       return switch this {
         case RNightly({ hash: v }): v;
-        case ROfficial(v): v;
+        case ROfficial(v) | RCustom(v): v;
       }
   
   public function toString():String    
-    return switch this {
-      case RNightly({ hash: v }): 'nightly build $v';
-      case ROfficial(v): 'official release $v';
-    }
+    return (this : UserVersion).toString();
 }
 
 abstract UserVersion(UserVersionData) from UserVersionData to UserVersionData {
@@ -90,16 +89,30 @@ abstract UserVersion(UserVersionData) from UserVersionData to UserVersionData {
     return switch v {
       case ROfficial(version): UOfficial(version);
       case RNightly({ hash: version }): UNightly(version);
+      case RCustom(v): UCustom(v);
     }
   
   static public function isHash(version:String) {
     
     for (i in 0...version.length)
       if (!hex[version.fastCodeAt(i)])
-        return false;
+        return false; 
         
     return true;
   }  
+
+  public function toString()
+    return switch this {
+      case UEdge:   'latest nightly build';
+      case ULatest: 'latest official';
+      case UStable: 'latest stable release';
+      case UNightly(v): 'nightly build $v';
+      case UOfficial(v): 'official release $v';
+      case UCustom(v): 'custom version at `$v`';
+    }
+
+  static public function isPath(v:String)
+    return v.isAbsolute() || v.charAt(0) == '.';
   
   @:from static public function ofString(s:Null<String>):UserVersion
     return 
@@ -110,6 +123,7 @@ abstract UserVersion(UserVersionData) from UserVersionData to UserVersionData {
         case 'latest': ULatest;
         case 'stable': UStable;
         case isHash(_) => true: UNightly(s);
+        case isPath(_) => true: UCustom(s);
         default: UOfficial(s);//TODO: check if this is valid?
       }
   

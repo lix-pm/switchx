@@ -129,7 +129,7 @@ class Cli {
           case v: new Error('too many arguments');
         }
       ),
-      new Command('switch', '<version>', 'switches to the specified version',
+      new Command('use', '<version>', 'switches to the specified version',
         function (args) return switch args {
           case [v]: api.resolveInstalled(v).next(switchTo);
           case []: new Error('not enough arguments');
@@ -197,6 +197,8 @@ class Cli {
                     else
                       '    $s';
                 
+                println('');
+                println('Using ${(scope.config.version:UserVersion)}');
                 println('');
                 println('Official releases:');
                 println('');

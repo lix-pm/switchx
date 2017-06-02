@@ -175,6 +175,8 @@ class Switchx {
             if (Lambda.has(versions, version)) ROfficial(version)
             else new Error(NotFound, 'Unknown version $version')
         );
+
+      case UCustom(path): RCustom(path);
     }  
     
   function versionDir(name:String)
@@ -230,6 +232,10 @@ class Switchx {
       }
     
     return switch version {
+      case RCustom(_): 
+
+        new Error('Cannot download custom version');
+
       case isDownloaded(_) => true if (options.force != true):
         
         false;
