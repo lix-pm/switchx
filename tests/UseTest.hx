@@ -4,13 +4,22 @@ using StringTools;
 
 @:asserts
 class UseTest extends TestBase {
-	public function official() {
-		switchx(['install', '3.4.0']);
-		asserts.assert(switchx(['use', '3.4.0']).exitCode == 0);
-		asserts.assert(haxeVer() == '3.4.0');
-		switchx(['install', '3.4.2']);
-		asserts.assert(switchx(['use', '3.4.2']).exitCode == 0);
-		asserts.assert(haxeVer() == '3.4.2');
+	
+	@:variant('ada466c', '3.4.2')
+	@:variant('c294a69', '4.0.0')
+	public function nightly(sha:String, version:String) {
+		switchx(['install', sha]);
+		asserts.assert(switchx(['use', sha]).exitCode == 0);
+		asserts.assert(haxeVer() == '$version (git build development @ $sha)');
+		return asserts.done();
+	}
+	
+	@:variant('3.4.0')
+	@:variant('3.4.2')
+	public function official(version:String) {
+		switchx(['install', version]);
+		asserts.assert(switchx(['use', version]).exitCode == 0);
+		asserts.assert(haxeVer() == version);
 		return asserts.done();
 	}
 	

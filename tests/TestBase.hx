@@ -11,8 +11,6 @@ class TestBase {
 		var proc = new Process(cmd, args);
 		var stdout = proc.stdout.readAll().toString();
 		var stderr = proc.stderr.readAll().toString();
-		trace(stdout);
-		trace(stderr);
 		return {
 			exitCode: proc.exitCode(),
 			stdout: stdout,
