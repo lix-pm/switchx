@@ -9,6 +9,7 @@ class RunTests {
 			new ListTest(),
 			new InstallTest(),
 			new UseTest(),
+			new ScopeTest(),
 		])).handle(Runner.exit);
 	}
 }
