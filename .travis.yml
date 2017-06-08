@@ -12,6 +12,7 @@ install:
   - lix download
   - haxe switchx.hxml
   - npm install . -g
+  - npm install
 
 script:
   - travix neko
