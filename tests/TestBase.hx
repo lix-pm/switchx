@@ -33,7 +33,6 @@ class TestBase {
 	function deleteDirectory(path:String) {
 		for(p in path.readDirectory()) {
 			var full = '$path/$p';
-			trace(full);
 			if(full.isDirectory()) deleteDirectory(full);
 			else full.deleteFile();
 		}

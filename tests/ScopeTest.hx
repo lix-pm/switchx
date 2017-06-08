@@ -29,7 +29,7 @@ class ScopeTest extends TestBase {
 	}
 	
 	public function create() {
-		asserts.assert(switchx(['scope', 'create'], true).exitCode == 0);
+		asserts.assert(switchx(['scope', 'create']).exitCode == 0);
 		var haxerc = '.haxerc'.getContent().parse();
 		asserts.assert(haxerc.version == '3.4.2');
 		asserts.assert(haxerc.resolveLibs == 'mixed');
