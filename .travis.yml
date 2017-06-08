@@ -8,12 +8,10 @@ os:
   - linux
     
 install:
-  - npm install haxeshim -g
-  - npm install lix.pm -g
+  - npm install haxe-travix lix.pm haxeshim -g
   - lix download
   - haxe switchx.hxml
   - npm install . -g
 
 script:
-
-  - switchx list
+  - travix neko
