@@ -50,4 +50,23 @@ class ScopeTest extends TestBase {
 		asserts.assert(display.stdout == '[local] ${Sys.getCwd().removeTrailingSlashes()}\n');
 		return asserts.done();
 	}
+	
+	@:variant('scoped')
+	@:variant('mixed')
+	@:variant('haxelib')
+	public function change(mode:String) {
+		switchx(['scope', 'create']);
+		asserts.assert(switchx(['libs', mode]).exitCode == 0);
+		var haxerc = '.haxerc'.getContent().parse();
+		asserts.assert(haxerc.resolveLibs == mode);
+		return asserts.done();
+	}
+	
+	@:variant('rubbish')
+	@:variant('')
+	public function invalidChange(mode:String) {
+		switchx(['scope', 'create']);
+		asserts.assert(switchx(['libs', mode]).exitCode != 0);
+		return asserts.done();
+	}
 }
