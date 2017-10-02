@@ -1,3 +1,5 @@
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/lix-pm/Lobby)
+
 # switchx - Switch Haxe versions like a sir.
 
 This little tool is based on [haxeshim](https://github.com/lix-pm/haxeshim) to switch between coexisting Haxe versions. As for usage, the command line doc pretty much says it all:
