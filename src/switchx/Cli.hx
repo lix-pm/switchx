@@ -69,10 +69,10 @@ class Cli {
     
     var scope = Scope.seek({ cwd: if (global) Scope.DEFAULT_ROOT else null });
     
-    var api = new Switchx(scope);
-    
+    var api = new Switchx(scope, args.remove('--silent'));
+
     var log =
-      if (args.remove('--silent')) function (msg:String) {}
+      if (api.silent) function (msg:String) {}
       else function (msg:String) Sys.println(msg);
     
     var force = args.remove('--force');

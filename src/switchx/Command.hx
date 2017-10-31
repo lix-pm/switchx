@@ -126,7 +126,7 @@ class Command {
   static public function dispatch(args:Array<String>, title:String, commands:Array<Command>, extras:Array<Named<Array<Named<String>>>>):Promise<Noise> 
     return 
       switch args.shift() {
-        case null:
+        case null | '--help':
           println(title);
           println('');
           var prefix = 0;

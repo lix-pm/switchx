@@ -8,13 +8,17 @@ import haxeshim.node.*;
 import js.node.Buffer;
 import js.node.Url;
 import js.node.Http;
+import js.Node.*;
 import js.node.http.ClientRequest;
 import js.node.http.IncomingMessage;
 
+//using js.node.Readline;
 using tink.CoreApi;
 using StringTools;
 
 typedef Directory = String;
+
+private typedef Handler<T> = String->IncomingMessage->(Outcome<T, Error>->Void)->Void;
 
 class Download {
 
@@ -33,13 +37,13 @@ class Download {
       });      
     });
     
-  static public function archive(url:String, peel:Int, into:String) {
-    return download(url, function (url:String, res, cb) {
-      if (res.headers['content-type'] == 'application/zip' || url.endsWith('.zip'))
+  static public function archive(url:String, peel:Int, into:String, ?message:String) {
+    return download(url, withProgress(message, function (finalUrl:String, res, cb) {
+      if (res.headers['content-type'] == 'application/zip' || url.endsWith('.zip') || finalUrl.endsWith('.zip'))
         unzip(url, into, peel, res, cb);
       else
         untar(url, into, peel, res, cb);
-    });
+    }));
   }
     
   static function unzip(src:String, into:String, peel:Int, res:IncomingMessage, cb:Outcome<String, Error>->Void) {
@@ -88,14 +92,36 @@ class Download {
     });
   }
   
-  static public function tar(url:String, peel:Int, into:String):Promise<Directory>
-    return download(url, untar.bind(_, into, peel));
+  static public function tar(url:String, peel:Int, into:String, ?message:String):Promise<Directory>
+    return download(url, withProgress(message, untar.bind(_, into, peel)));
 
     
-  static public function zip(url:String, peel:Int, into:String):Promise<Directory>
-    return download(url, unzip.bind(_, into, peel));
+  static public function zip(url:String, peel:Int, into:String, ?message:String):Promise<Directory>
+    return download(url, withProgress(message, unzip.bind(_, into, peel)));
+
+  static function withProgress<T>(?message:String, handler:Handler<T>):Handler<T> {
+    return 
+      if (message == null || !process.stdout.isTTY) handler;
+      else function (url:String, msg:IncomingMessage, cb:Outcome<T, Error>->Void) {
+        var total = Std.parseInt(msg.headers.get('content-length')),
+            loaded = 0;
+        
+        function progress(s:String)
+          untyped {
+            process.stdout.clearLine(0);
+            process.stdout.cursorTo(0);
+            process.stdout.write(message + s);
+          }
+
+        msg.on('data', function (buf) {
+          loaded += buf.length;
+          progress(Std.string(Math.round(1000 * loaded / total) / 10) + '%');
+        });
+        handler(url, msg, cb);
+      }
+  }
       
-  static function download<T>(url:String, handler:String->IncomingMessage->(Outcome<T, Error>->Void)->Void):Promise<T>
+  static function download<T>(url:String, handler:Handler<T>):Promise<T>
     return Future.async(function (cb) {
       
       var options:HttpRequestOptions = cast Url.parse(url);

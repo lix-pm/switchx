@@ -20,10 +20,12 @@ enum PickOfficial {
 class Switchx {
   
   public var scope(default, null):haxeshim.Scope;
+  public var silent(default, null):Bool;
   var downloads:String;
     
-  public function new(scope) {
+  public function new(scope, silent) {
     this.scope = scope;
+    this.silent = silent;
     
     Fs.ensureDir(scope.versionDir.addTrailingSlash());
     Fs.ensureDir(scope.haxelibRepo.addTrailingSlash());
@@ -225,11 +227,8 @@ class Switchx {
       
   public function download(version:ResolvedVersion, options:{ force: Bool }):Promise<Bool> {
     
-    inline function downloadArchive(url, peel, into)
-      return switch Path.extension(url) {
-        case 'zip': Download.zip(url, peel, into);
-        default: Download.tar(url, peel, into);
-      }
+    inline function download(url, into)
+      return Download.archive(url, 0, into, if (silent) null else 'Downloading ... ');
     
     return switch version {
       case RCustom(_): 
@@ -242,7 +241,7 @@ class Switchx {
         
       case RNightly({ hash: hash, published: date }):
         
-        downloadArchive(linkToNightly(hash, date), 0, '$downloads/$hash@${Math.floor(Date.now().getTime())}').next(function (dir) {
+        download(linkToNightly(hash, date), '$downloads/$hash@${Math.floor(Date.now().getTime())}').next(function (dir) {
           replace(versionDir(hash), dir, hash, function (dir) {
             '$dir/$VERSION_INFO'.saveContent(haxe.Json.stringify({
               published: date.toString(),
@@ -256,7 +255,7 @@ class Switchx {
         var url = linkToOfficial(version),
             tmp = '$downloads/$version@${Math.floor(Date.now().getTime())}';
             
-        var ret = downloadArchive(url, 0, tmp);
+        var ret = download(url, tmp);
           
         ret.next(function (v) {
           replace(versionDir(version), v, version);
