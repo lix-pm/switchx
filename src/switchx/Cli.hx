@@ -87,7 +87,7 @@ class Cli {
       }).tryRecover(function (_) {
         log('Looking up Haxe version "$version" online');
         return api.resolveOnline(version).next(function (r) {
-          log('  Resolved to $r. Downloading ...');
+          log('  Resolved to $r.');
           return r;
         });
       }).next(function (r) {
@@ -97,7 +97,7 @@ class Cli {
             if (!wasDownloaded)
               '  ... already downloaded!'
             else
-              '  ... download complete!'
+              ''
           );
           
           return r;

@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "tar": "=2.2.1",
+    "unzipper": "=0.8.9",
     "yauzl": "=2.6.0"
   },
   "keywords": [

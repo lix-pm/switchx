@@ -47,39 +47,13 @@ class Download {
   }
     
   static function unzip(src:String, into:String, peel:Int, res:IncomingMessage, cb:Outcome<String, Error>->Void) {
-    buffered(res).next(function (bytes)
-      return Future.async(function (cb) {
-        var count = 1;
-        function done() 
-          Timer.delay(function () {
-            if (--count == 0) cb(Success(into));
-          }, 100);
-        Yauzl.fromBuffer(Buffer.hxFromBytes(bytes), function (err, zip) {
-          
-          if (err != null)
-            cb(Failure(new Error(UnprocessableEntity, 'Failed to unzip $src')));
-            
-          zip.on("entry", function (entry) switch Fs.peel(entry.fileName, peel) {
-            case None:
-            case Some(f):
-              var path = '$into/$f';
-              if (!path.endsWith('/')) {
-                Fs.ensureDir(path);
-                zip.openReadStream(entry, function (e, stream) { 
-                  count++;
-                  var out = js.node.Fs.createWriteStream(path);
-                  stream.pipe(out, { end: true } );
-                  out.on('close', done);
-                });
-              }
-              
-          });
-          zip.on("end", function () {
-            zip.close();
-            done();
-          });
-        });            
-      })).handle(cb); 
+    res
+      .pipe(Unzip.Extract( { path: into, strip: peel } ))
+    .on('error', function (e:js.Error) {
+      cb(Failure(new Error(UnprocessableEntity, 'Failed to unzip $src into $into because $e')));
+    }).on('close', function () {
+      cb(Success(into));
+    });
   }
   static function untar(src:String, into:String, peel:Int, res:IncomingMessage, cb:Outcome<String, Error>->Void) {
     res
