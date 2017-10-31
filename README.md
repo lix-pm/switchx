@@ -12,7 +12,7 @@ switchx - haxe version switcher
            install [<version>] : installs the version if specified, otherwise
                                  installs the currently configured version
             download <version> : downloads the specified version
-              switch <version> : switches to the specified version
+                 use <version> : switches to the specified version
    libs [scoped|mixed|haxelib] : sets library resolution strategy
          scope [create|delete] : creates or deletes the current scope or
                                  inspects it if no argument is supplied
