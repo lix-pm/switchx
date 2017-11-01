@@ -64,23 +64,13 @@ class Cli {
     ensureGlobal().flatMap(ensureNeko).handle(dispatch.bind(args()));
   }
 
-  static function getCommands(scope:Scope, silent:Bool, force:Bool) {
-
-  }
-
-  static function dispatch(args:Array<String>, ?cb) {
-    var global = args.remove('--global');
-    
-    var scope = Scope.seek({ cwd: if (global) Scope.DEFAULT_ROOT else null });
-    
-    var api = new Switchx(scope, args.remove('--silent'));
-
+  static public function makeCommands(api:Switchx, force:Bool) {
     var log =
       if (api.silent) function (msg:String) {}
       else function (msg:String) Sys.println(msg);
-    
-    var force = args.remove('--force');
-    
+
+    var scope = api.scope;
+
     function download(version:String) {
 
       return (switch ((version : UserVersion) : UserVersionData) {
@@ -114,8 +104,8 @@ class Cli {
         log('Now using $version');
         return v;
       });
-    
-    Command.dispatch(args, 'switchx - haxe version switcher', [
+
+    return [
       new Command('install', '[<version>]', 'installs the version if specified, otherwise\ninstalls the currently configured version', 
         function (args) return switch args {
           case [v]:
@@ -226,21 +216,31 @@ class Cli {
             new Error('command `list` does expect arguments');
         }
       )
-    ], [
+    ];
+  }
+
+  static function dispatch(args:Array<String>, ?cb) {
+
+    var scope = Scope.seek({ cwd: if (args.remove('--global')) Scope.DEFAULT_ROOT else null });
+    
+    var api = new Switchx(scope, args.remove('--silent'));
+    
+    Command.dispatch(args, 'switchx - haxe version switcher', makeCommands(api, args.remove('--force')), [
       new Named('Supported switches', [
         new Named('--silent', 'disables logging'),
         new Named('--global', 'performs operation on global scope'),
         new Named('--force', 'forces re-download'),
       ]),
-      new Named('Version aliases', [
-        new Named('edge, nightly', 'latest nightly build from builds.haxe.org'),
-        new Named('latest', 'latest official release from haxe.org'),
-        new Named('stable', 'latest stable release from haxe.org'),
-      ])
+      ALIASES,
     ]).handle(function (o) {
       Command.reportOutcome(o);
       if (cb != null) cb();
     });
   }
   
+  static public var ALIASES = new Named('Version aliases', [
+    new Named('edge, nightly', 'latest nightly build from builds.haxe.org'),
+    new Named('latest', 'latest official release from haxe.org'),
+    new Named('stable', 'latest stable release from haxe.org'),
+  ]);
 }
