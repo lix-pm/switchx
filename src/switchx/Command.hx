@@ -132,24 +132,43 @@ class Command {
           var prefix = 0;
           
           for (c in commands) {
-            var cur = c.name.toString().length + c.args.length;
+            var longest = {
+              var v = 0;
+              for (line in c.args.split('\n'))
+                if (line.length > v) v = line.length;
+              v;
+            }
+            var cur = c.name.toString().length + longest;
             if (cur > prefix)
               prefix = cur;
           }
           
           prefix += 7;
           
-          var prefix = [for (i in 0...prefix) ' '].join('');
+          // var prefix = [for (i in 0...prefix) ' '].join('');
           
           function pad(s:String)
-            return s.lpad(' ', prefix.length);
+            return s.lpad(' ', prefix);
             
           println('  Supported commands:');
           println('');
           
           for (c in commands) {
-            var s = '  ' + c.name + (switch c.args { case '': ''; case v: ' $v'; }) + ' : ';
-            println(pad(s) + c.doc.replace('\n', '\n$prefix'));
+            var leftCol = c.args.split('\n');
+            
+            leftCol[0] = '  ' + c.name + (switch leftCol[0] { case '' | null: ''; case v: ' $v'; }) + ' : ';
+            for (i in 1...leftCol.length)
+              leftCol[i] = leftCol[i] + '   ';
+            var rightCol = c.doc.split('\n');
+
+            while (leftCol.length < rightCol.length)
+              leftCol.push('');
+
+            while (leftCol.length > rightCol.length)
+              rightCol.push('');
+
+            for (i in 0...leftCol.length)
+              println(pad(leftCol[i]) + rightCol[i]);
           }
           
           for (e in extras) {

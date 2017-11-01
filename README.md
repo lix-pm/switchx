@@ -9,26 +9,26 @@ switchx - haxe version switcher
 
   Supported commands:
 
-           install [<version>] : installs the version if specified, otherwise
-                                 installs the currently configured version
-            download <version> : downloads the specified version
-                 use <version> : switches to the specified version
-   libs [scoped|mixed|haxelib] : sets library resolution strategy
-         scope [create|delete] : creates or deletes the current scope or
-                                 inspects it if no argument is supplied
-                         list  : lists currently downloaded versions
+            install [<version>] : installs the version if specified, otherwise
+                                  installs the currently configured version
+             download <version> : downloads the specified version
+                  use <version> : switches to the specified version
+      scope [create|delete|set] : creates, deletes or configures
+         [scoped|mixed|haxelib]   the current scope or inspects it
+                                  if no argument is supplied
+                           list : lists currently downloaded versions
 
-  Supported switches:
+  Supported switches
 
-                      --silent : disables logging
-                      --global : performs operation on global scope
-                       --force : forces re-download
+                       --silent : disables logging
+                       --global : performs operation on global scope
+                        --force : forces re-download
 
-  Version aliases:
+  Version aliases
 
-                 edge, nightly : latest nightly build from builds.haxe.org
-                        latest : latest official release from haxe.org
-                        stable : latest stable release from haxe.org
+                  edge, nightly : latest nightly build from builds.haxe.org
+                         latest : latest official release from haxe.org
+                         stable : latest stable release from haxe.org              
 ```
 
 Note that in `switch` version aliases refer to the latest *installed* version of that kind while otherwise they refer to the latest version *found online*. Please refer to the [haxeshim doc for library resolution strategies](https://github.com/lix-pm/haxeshim#library-resolution)

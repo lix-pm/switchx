@@ -63,7 +63,11 @@ class Cli {
   static function main() {
     ensureGlobal().flatMap(ensureNeko).handle(dispatch.bind(args()));
   }
-  
+
+  static function getCommands(scope:Scope, silent:Bool, force:Bool) {
+
+  }
+
   static function dispatch(args:Array<String>, ?cb) {
     var global = args.remove('--global');
     
@@ -136,38 +140,36 @@ class Cli {
           case v: new Error('too many arguments');
         }
       ),
-      new Command('libs', '[scoped|mixed|haxelib]', 'sets library resolution strategy',
-        function (args) return switch args {
-          case []: new Error('not enough arguments');
-          case [v]: 
-            
-            var options = [
-              'scoped' => Scoped,
-              'mixed' => Mixed,
-              'haxelib' => Haxelib,
-            ];
-            
-            if (options.exists(v)) {
-              scope.reconfigure({
-                version: scope.config.version,
-                resolveLibs: options[v]
-              });
-              Noise;
+      new Command('scope', '[create|delete|set]\n[scoped|mixed|haxelib]', 'creates, deletes or configures\nthe current scope or inspects it\nif no argument is supplied',
+        function (args) return switch args[0] {
+          case 'set':
+            switch args.slice(1) {
+              case []: new Error('not enough arguments');
+              case [v]: 
+                
+                LibResolution.parse(v).map(function (v) {
+                  scope.reconfigure({
+                    version: scope.config.version,
+                    resolveLibs: v
+                  });
+                  return Noise;
+                });
+
+              case v: new Error('too many arguments');              
             }
-            else new Error('unknown strategy $v');
-          case v: new Error('too many arguments');
-        }
-      ),
-      new Command('scope', '[create|delete]', 'creates or deletes the current scope or\ninspects it if no argument is supplied',
-        function (args) return switch args {
-          case ['create']:
-            Scope.create(scope.cwd, {
-              version: scope.config.version,
-              resolveLibs: if (scope.isGlobal) Scoped else scope.config.resolveLibs,
+          case 'create':
+            Promise.lift(switch args.slice(1) {
+              case []: if (scope.isGlobal) Scoped else scope.config.resolveLibs;
+              case [v]: LibResolution.parse(v);
+              default: new Error('too many arguments');
+            }).next(function (resolution) return {
+              Scope.create(scope.cwd, {
+                version: scope.config.version,
+                resolveLibs: if (scope.isGlobal) Scoped else scope.config.resolveLibs,
+              });
+              return Noise;
             });
-            log('created scope in ${scope.cwd}');
-            Noise;
-          case ['delete']:
+          case 'delete':
             if (scope.isGlobal)
               new Error('Cannot delete global scope');
             else {
@@ -175,7 +177,7 @@ class Cli {
               log('deleted scope in ${scope.scopeDir}');
               Noise;
             }
-          case []: 
+          case null: 
             println(
               (if (scope.isGlobal) '[global]'
               else '[local]') + ' ${scope.scopeDir}'
