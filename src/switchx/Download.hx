@@ -178,7 +178,10 @@ class Download {
         }
 
         function pct(f:Float)
-          return Std.string(Math.round(1000 * f) / 10).lpad(' ', 4) + '%';
+          return (switch Std.string(Math.round(1000 * f) / 10) {
+            case whole = _.indexOf('.') => -1: '$whole.0';
+            case v: v;
+          }).lpad(' ', 5) + '%';
 
         var lastUpdate = Date.fromTime(0).getTime();
 
@@ -186,7 +189,7 @@ class Download {
           if (saved == total) progress('Done!\n');
           else {
             var now = Date.now().getTime();
-            if (now > lastUpdate + 100) {
+            if (now > lastUpdate + 137) {
               
               lastUpdate = now;
               var messages = [];
