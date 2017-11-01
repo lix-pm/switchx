@@ -10,7 +10,7 @@
     "url": "git+https://github.com/lix-pm/switchx.git"
   },
   "dependencies": {
-    "tar": "^4.0.2",
+    "tar": "=4.0.2",
     "yauzl": "=2.6.0"
   },
   "keywords": [
