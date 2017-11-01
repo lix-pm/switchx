@@ -10,6 +10,8 @@ extern class Yauzl {
 }
 
 extern interface YauzlArchive extends js.node.events.EventEmitter.IEventEmitter {
+  var entriesRead(default, null):Int;
+  var entryCount(default, null):Int;
   function openReadStream(entry:Dynamic, cb:js.Error->IReadable-> Void):Void;
   function close():Void;
 }

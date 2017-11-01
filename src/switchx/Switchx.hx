@@ -228,7 +228,7 @@ class Switchx {
   public function download(version:ResolvedVersion, options:{ force: Bool }):Promise<Bool> {
     
     inline function download(url, into)
-      return Download.archive(url, 0, into, if (silent) null else 'Downloading ... ');
+      return Download.archive(url, 0, into, !silent);
     
     return switch version {
       case RCustom(_): 

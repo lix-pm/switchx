@@ -18,6 +18,12 @@ using StringTools;
 
 typedef Directory = String;
 
+private typedef Events<T> = {
+  function onProgress(loaded:Int, total:Int, binary:Bool):Void;
+  function done(result:Outcome<T, Error>):Void;
+}
+
+private typedef ProgressHandler<T> = String->IncomingMessage->Events<T>->Void;
 private typedef Handler<T> = String->IncomingMessage->(Outcome<T, Error>->Void)->Void;
 
 class Download {
@@ -37,36 +43,40 @@ class Download {
       });      
     });
     
-  static public function archive(url:String, peel:Int, into:String, ?message:String) {
-    return download(url, withProgress(message, function (finalUrl:String, res, cb) {
+  static public function archive(url:String, peel:Int, into:String, ?progress:Bool) {
+    return download(url, withProgress(progress, function (finalUrl:String, res, events) {
       if (res.headers['content-type'] == 'application/zip' || url.endsWith('.zip') || finalUrl.endsWith('.zip'))
-        unzip(url, into, peel, res, cb);
+        unzip(url, into, peel, res, events);
       else
-        untar(url, into, peel, res, cb);
+        untar(url, into, peel, res, events);
     }));
   }
     
-  static function unzip(src:String, into:String, peel:Int, res:IncomingMessage, cb:Outcome<String, Error>->Void) {
+  static function unzip(src:String, into:String, peel:Int, res:IncomingMessage, events:Events<String>) {
     buffered(res).next(function (bytes)
       return Future.async(function (cb) {
-        var count = 1;
-        function done() 
-          Timer.delay(function () {
-            if (--count == 0) cb(Success(into));
-          }, 100);
         Yauzl.fromBuffer(Buffer.hxFromBytes(bytes), function (err, zip) {
+          var saved = -1;//something is really weird about this lib
+          function done() {
+            saved += 1;
+            events.onProgress(saved, zip.entryCount, false);
+            if (saved == zip.entryCount)
+              haxe.Timer.delay(cb.bind(Success(into)), 100);
+          }
           
           if (err != null)
             cb(Failure(new Error(UnprocessableEntity, 'Failed to unzip $src')));
-            
+          
           zip.on("entry", function (entry) switch Fs.peel(entry.fileName, peel) {
             case None:
             case Some(f):
+              //trace([zip.entriesRead, zip.entryCount]);
               var path = '$into/$f';
-              if (!path.endsWith('/')) {
+              if (path.endsWith('/')) 
+                done();
+              else {
                 Fs.ensureDir(path);
                 zip.openReadStream(entry, function (e, stream) { 
-                  count++;
                   var out = js.node.Fs.createWriteStream(path);
                   stream.pipe(out, { end: true } );
                   out.on('close', done);
@@ -79,45 +89,146 @@ class Download {
             done();
           });
         });            
-      })).handle(cb); 
+      })).handle(events.done); 
   }
-  static function untar(src:String, into:String, peel:Int, res:IncomingMessage, cb:Outcome<String, Error>->Void) {
-    res
-      .pipe(js.node.Zlib.createGunzip())
-      .pipe(Tar.Extract( { path: into, strip: peel } ))
-    .on('error', function (e:js.Error) {
-      cb(Failure(new Error(UnprocessableEntity, 'Failed to untar $src into $into because $e')));
-    }).on('close', function () {
-      cb(Success(into));
-    });
-  }
+  static function untar(src:String, into:String, peel:Int, res:IncomingMessage, events:Events<String>) 
+    return Future.async(function (cb) {
+      var total = 0,
+          written = 0;
+
+      function update()
+        events.onProgress(written, total + 1, true);
+
+      var pending = 1;
+      function done(progress = 0) {
+        written += progress;
+        update();
+        haxe.Timer.delay(function () {
+          //trace(pending);
+          if (--pending <= 0) {
+            events.onProgress(total, total, true);
+            cb(Success(into));
+          }
+        }, 100);
+      }
+      
+      Tar.parse(res, function (entry) {
+        total += entry.size;
+        update();
+
+        function skip() {
+          entry.on('data', function () {});
+        }
+        switch Fs.peel(entry.path, peel) {
+          case None:
+            skip();
+          case Some(f):
+            var path = '$into/$f';
+            if (path.endsWith('/')) 
+              skip();
+            else {
+              Fs.ensureDir(path);
+              pending++;
+              var buffer = @:privateAccess new js.node.stream.PassThrough();
+              var out = js.node.Fs.createWriteStream(path);
+              entry.pipe(buffer, { end: true } );
+              buffer.pipe(out, { end: true } );
+              out.on('close', done.bind(entry.size));
+            }
+        }      
+      }).handle(function (o) switch o {
+        case Failure(e): cb(Failure(e));
+        default: done();
+      });
+    }).handle(events.done);
   
-  static public function tar(url:String, peel:Int, into:String, ?message:String):Promise<Directory>
-    return download(url, withProgress(message, untar.bind(_, into, peel)));
+  static public function tar(url:String, peel:Int, into:String, ?progress:Bool):Promise<Directory>
+    return download(url, withProgress(progress, untar.bind(_, into, peel)));
 
     
-  static public function zip(url:String, peel:Int, into:String, ?message:String):Promise<Directory>
-    return download(url, withProgress(message, unzip.bind(_, into, peel)));
+  static public function zip(url:String, peel:Int, into:String, ?progress:Bool):Promise<Directory>
+    return download(url, withProgress(progress, unzip.bind(_, into, peel)));
 
-  static function withProgress<T>(?message:String, handler:Handler<T>):Handler<T> {
+  static function withProgress<T>(?progress:Bool, handler:ProgressHandler<T>):Handler<T> {
     return 
-      if (message == null || !process.stdout.isTTY) handler;
-      else function (url:String, msg:IncomingMessage, cb:Outcome<T, Error>->Void) {
-        var total = Std.parseInt(msg.headers.get('content-length')),
-            loaded = 0;
+      function (url:String, msg:IncomingMessage, cb:Outcome<T, Error>->Void) {
+        if (progress != true || !process.stdout.isTTY) {
+          handler(url, msg, {
+            onProgress: function (_, _, _) {},
+            done: cb,
+          });          
+          return;
+        }
         
-        function progress(s:String)
+        var size = Std.parseInt(msg.headers.get('content-length')),
+            loaded = 0,
+            saved = 0,
+            total = 1;
+        
+        var last = null;
+
+        function progress(s:String) {
+          if (s == last) return;
+          last = s;
           untyped {
             process.stdout.clearLine(0);
             process.stdout.cursorTo(0);
-            process.stdout.write(message + s);
           }
+          process.stdout.write(s);
+        }
+
+        function pct(f:Float)
+          return Std.string(Math.round(1000 * f) / 10).lpad(' ', 4) + '%';
+
+        var lastUpdate = Date.fromTime(0).getTime();
+
+        function update() {
+          if (saved == total) progress('Done!\n');
+          else {
+            var now = Date.now().getTime();
+            if (now > lastUpdate + 100) {
+              
+              lastUpdate = now;
+              var messages = [];
+              if (loaded < size) messages.push('Downloaded: ${pct(loaded / size)}');
+              if (saved > 0) messages.push('Saved: ${pct(saved / total)}');
+              progress(messages.join('   '));
+            }
+          }
+        }
 
         msg.on('data', function (buf) {
           loaded += buf.length;
-          progress(Std.string(Math.round(1000 * loaded / total) / 10) + '%');
+          update();
         });
-        handler(url, msg, cb);
+
+        var last = .0;
+        handler(url, msg, {
+          onProgress: function (_saved, _total, binary) {
+            saved = _saved;
+            total = _total;
+            /**
+              The following is truly hideous, but there's no easy way 
+              to actually KNOW how much of a .tar.gz you have unpacked, because apparently:
+
+              - tar was made for freaking TAPE WRITERS and is just a stream of entries, with no real
+                beginning where the number of files might be mentioned (see https://en.wikipedia.org/wiki/Tar_(computing)#Random_access)
+              - gzip doesn't seem to give any hints as to how big the file should be when uncompressed
+            **/
+            if (binary) {
+              var downloaded = loaded / size;
+              var decompressed = saved / total;
+              var estimate = downloaded * decompressed;
+              if (estimate < last)
+                estimate = last;
+              last = estimate;
+              saved = Math.round(estimate * 1000);
+              total = 1000;
+            }
+            update();
+          },
+          done: cb,
+        });
       }
   }
       
