@@ -23,4 +23,5 @@ extern class TarParse extends Writable<TarParse> {
 extern interface TarEntry extends IReadable {
   var size(default, null):Int;
   var path(default, null):String;
+  var mode(default, null):Int;
 } 

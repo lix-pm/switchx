@@ -104,7 +104,6 @@ class Download {
         written += progress;
         update();
         haxe.Timer.delay(function () {
-          //trace(pending);
           if (--pending <= 0) {
             events.onProgress(total, total, true);
             cb(Success(into));
@@ -130,7 +129,7 @@ class Download {
               Fs.ensureDir(path);
               pending++;
               var buffer = @:privateAccess new js.node.stream.PassThrough();
-              var out = js.node.Fs.createWriteStream(path);
+              var out = js.node.Fs.createWriteStream(path, { mode: entry.mode });
               entry.pipe(buffer, { end: true } );
               buffer.pipe(out, { end: true } );
               out.on('close', done.bind(entry.size));
