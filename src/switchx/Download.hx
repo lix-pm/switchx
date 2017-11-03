@@ -146,8 +146,8 @@ class Download {
             else {
               Fs.ensureDir(path);
               if (entry.type == SymbolicLink) {
-                switch Fs.peel(entry.linkpath, peel) {
-                  case None: fail('invalid symlink');
+                switch Fs.peel(Path.join([Path.directory(path), entry.linkpath]), peel) {
+                  case None: fail('invalid symlink ${entry.linkpath}');
                   case Some(v):
                     skip();
                     symlinks.push({ from: '$into/$v', to: path });
