@@ -110,8 +110,13 @@ class Download {
           }
         }, 100);
       }
-      
+      var error = null;
+      function fail(e:Error) {
+        error = e;
+        cb(Failure(error));
+      }
       Tar.parse(res, function (entry) {
+        if (error != null) return;
         total += entry.size;
         update();
 
@@ -132,7 +137,14 @@ class Download {
               var out = js.node.Fs.createWriteStream(path, { mode: entry.mode });
               entry.pipe(buffer, { end: true } );
               buffer.pipe(out, { end: true } );
-              out.on('close', done.bind(entry.size));
+              out.on('close', function () {
+                js.node.Fs.chmod(path, entry.mode, function (e) {
+                  if (e != null)
+                    fail(new Error(e.message));
+                  else
+                    done(entry.size);
+                });
+              });
             }
         }      
       }).handle(function (o) switch o {
