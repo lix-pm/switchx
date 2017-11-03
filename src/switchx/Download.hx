@@ -9,6 +9,7 @@ import js.node.Buffer;
 import js.node.Url;
 import js.node.Http;
 import js.Node.*;
+import js.node.stream.Readable.IReadable;
 import js.node.http.ClientRequest;
 import js.node.http.IncomingMessage;
 
@@ -91,10 +92,12 @@ class Download {
         });            
       })).handle(events.done); 
   }
-  static function untar(src:String, into:String, peel:Int, res:IncomingMessage, events:Events<String>) 
+  static public function untar(src:String, into:String, peel:Int, res:IReadable, events:Events<String>) 
     return Future.async(function (cb) {
       var total = 0,
           written = 0;
+
+      var symlinks = [];
 
       function update()
         events.onProgress(written, total + 1, true);
@@ -106,12 +109,27 @@ class Download {
         haxe.Timer.delay(function () {
           if (--pending <= 0) {
             events.onProgress(total, total, true);
-            cb(Success(into));
+            Promise.inParallel([for (link in symlinks) 
+              Future.async(function (cb) 
+                js.node.Fs.unlink(link.to, function (_) 
+                  js.node.Fs.symlink(link.from, link.to, function (e:js.Error) cb(//TODO: figure out if mode needs to be set
+                    if (e == null) Success(Noise)
+                    else Failure(new Error(e.message))
+                  ))
+                )
+              )
+            ]).next(function (_) return into).handle(cb);
           }
         }, 100);
       }
+
+      var error:Error = null;
       
+      function fail(message:String)
+        cb(Failure(error = new Error(message)));
+
       Tar.parse(res, function (entry) {
+        if (error != null) return;
         total += entry.size;
         update();
 
@@ -127,12 +145,22 @@ class Download {
               skip();
             else {
               Fs.ensureDir(path);
-              pending++;
-              var buffer = @:privateAccess new js.node.stream.PassThrough();
-              var out = js.node.Fs.createWriteStream(path, { mode: entry.mode });
-              entry.pipe(buffer, { end: true } );
-              buffer.pipe(out, { end: true } );
-              out.on('close', done.bind(entry.size));
+              if (entry.type == SymbolicLink) {
+                switch Fs.peel(entry.linkpath, peel) {
+                  case None: fail('invalid symlink');
+                  case Some(v):
+                    skip();
+                    symlinks.push({ from: '$into/$v', to: path });
+                }
+              }
+              else {
+                pending++;
+                var buffer = @:privateAccess new js.node.stream.PassThrough();
+                var out = js.node.Fs.createWriteStream(path, { mode: entry.mode });
+                entry.pipe(buffer, { end: true } );
+                buffer.pipe(out, { end: true } );
+                out.on('close', done.bind(entry.size));
+              }
             }
         }      
       }).handle(function (o) switch o {

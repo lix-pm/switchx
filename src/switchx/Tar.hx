@@ -24,4 +24,12 @@ extern interface TarEntry extends IReadable {
   var size(default, null):Int;
   var path(default, null):String;
   var mode(default, null):Int;
+  var linkpath(default, null):String;
+  var type(default, null):TarEntryType;
 } 
+
+@:enum abstract TarEntryType(String) to String {
+  var SymbolicLink = 'SymbolicLink';
+  var File = 'File';
+  var Directory = 'Directory';
+}
