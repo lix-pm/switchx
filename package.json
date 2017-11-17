@@ -4,6 +4,9 @@
   "bin": {
     "switchx": "bin/switchx.js"
   },
+  "scripts": {
+    "prepublishOnly": "haxe switchx.hxml"
+  },
   "description": "Switch Haxe versions like a sir.",
   "repository": {
     "type": "git",
