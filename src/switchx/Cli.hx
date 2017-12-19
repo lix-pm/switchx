@@ -50,9 +50,9 @@ class Cli {
         println('Neko seems to be missing. Attempting download ...');
 
         (switch systemName() {
-          case 'Windows': Download.zip.bind('http://nekovm.org/media/neko-2.1.0-win.zip');
-          case 'Mac': Download.tar.bind('http://nekovm.org/media/neko-2.1.0-osx64.tar.gz');
-          default: Download.tar.bind('http://nekovm.org/media/neko-2.1.0-linux64.tar.gz');
+          case 'Windows': Download.zip.bind('https://github.com/HaxeFoundation/neko/releases/download/v2-2-0/neko-2.2.0-win.zip');
+          case 'Mac': Download.tar.bind('https://github.com/HaxeFoundation/neko/releases/download/v2-2-0/neko-2.2.0-osx64.tar.gz');
+          default: Download.tar.bind('https://github.com/HaxeFoundation/neko/releases/download/v2-2-0/neko-2.2.0-linux64.tar.gz');
         })(1, neko).recover(Command.reportError).map(function (x) {
           println('done');
           return x;
