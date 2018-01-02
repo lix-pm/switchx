@@ -12,6 +12,15 @@ using StringTools;
 using sys.FileSystem;
 
 class Cli {
+  
+  var api:Switchx;
+  var force:Bool;
+  
+  public function new(api, force) {
+    this.api = api;
+    this.force = force;
+  }
+
   static function ensureGlobal() 
     return 
       Future.async(function (cb) {
@@ -64,46 +73,45 @@ class Cli {
     ensureGlobal().flatMap(ensureNeko).handle(dispatch.bind(args()));
   }
 
-  static public function makeCommands(api:Switchx, force:Bool) {
-    var log =
-      if (api.silent) function (msg:String) {}
-      else function (msg:String) Sys.println(msg);
+  public function download(version:String) {
 
+    return (switch ((version : UserVersion) : UserVersionData) {
+      case UNightly(_) | UOfficial(_): 
+        api.resolveInstalled(version);
+      default: 
+        Promise.lift(new Error('$version needs to be resolved online'));
+    }).tryRecover(function (_) {
+      log('Looking up Haxe version "$version" online');
+      return api.resolveOnline(version).next(function (r) {
+        log('  Resolved to $r.');
+        return r;
+      });
+    }).next(function (r) {
+      return api.download(r, { force: force }).next(function (wasDownloaded) {
+        
+        log(
+          if (!wasDownloaded)
+            '  ... already downloaded!'
+          else
+            ''
+        );
+        
+        return r;
+      });
+    });
+  }
+  
+  function log(s:String)
+    if (!api.silent) Sys.println(s);
+
+  public function switchTo(version:ResolvedVersion)
+    return api.switchTo(version).next(function (v) {
+      log('Now using $version');
+      return v;
+    });  
+
+  public function makeCommands() {
     var scope = api.scope;
-
-    function download(version:String) {
-
-      return (switch ((version : UserVersion) : UserVersionData) {
-        case UNightly(_) | UOfficial(_): 
-          api.resolveInstalled(version);
-        default: 
-          Promise.lift(new Error('$version needs to be resolved online'));
-      }).tryRecover(function (_) {
-        log('Looking up Haxe version "$version" online');
-        return api.resolveOnline(version).next(function (r) {
-          log('  Resolved to $r.');
-          return r;
-        });
-      }).next(function (r) {
-        return api.download(r, { force: force }).next(function (wasDownloaded) {
-          
-          log(
-            if (!wasDownloaded)
-              '  ... already downloaded!'
-            else
-              ''
-          );
-          
-          return r;
-        });
-      });
-    }
-    
-    function switchTo(version:ResolvedVersion)
-      return api.switchTo(version).next(function (v) {
-        log('Now using $version');
-        return v;
-      });
 
     return [
       new Command('install', '[<version>]', 'installs the version if specified, otherwise\ninstalls the currently configured version', 
@@ -223,9 +231,9 @@ class Cli {
 
     var scope = Scope.seek({ cwd: if (args.remove('--global')) Scope.DEFAULT_ROOT else null });
     
-    var api = new Switchx(scope, args.remove('--silent'));
+    var cli = new Cli(new Switchx(scope, args.remove('--silent')), args.remove('--force'));
     
-    Command.dispatch(args, 'switchx - haxe version switcher', makeCommands(api, args.remove('--force')), [
+    Command.dispatch(args, 'switchx - haxe version switcher', cli.makeCommands(), [
       new Named('Supported switches', [
         new Named('--silent', 'disables logging'),
         new Named('--global', 'performs operation on global scope'),
