@@ -209,7 +209,7 @@ class Download {
         var lastUpdate = Date.fromTime(0).getTime();
 
         function update() {
-          if (saved == total) progress('Done!\n');
+          if (saved == total || total == 0) progress('Done!\n');
           else {
             var now = Date.now().getTime();
             if (now > lastUpdate + 137) {
