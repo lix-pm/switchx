@@ -94,6 +94,9 @@ class Command {
     this.doc = doc;
     this.exec = exec;
   }
+
+  public function as(alias:CommandName, ?doc:String)
+    return new Command(alias, args, if (doc == null) this.doc else doc, exec);
   
   static public function reportError(e:Error):Dynamic {
     stderr().writeString(e.message + '\n\n');
@@ -144,9 +147,7 @@ class Command {
           }
           
           prefix += 7;
-          
-          // var prefix = [for (i in 0...prefix) ' '].join('');
-          
+                    
           function pad(s:String)
             return s.lpad(' ', prefix);
             
