@@ -21,7 +21,7 @@ class Cli {
     this.force = force;
   }
 
-  static function ensureGlobal() 
+  static public function ensureGlobal(command:String = "switchx") 
     return 
       Future.async(function (cb) {
 
@@ -31,7 +31,7 @@ class Cli {
         if (Scope.exists(Scope.DEFAULT_ROOT)) done();
         else {
           
-          println("It seems you're running switchx for the first time.\nPlease wait for basic setup to finish ...");
+          println('It seems you\'re running $command for the first time.\nPlease wait for basic setup to finish ...');
           
           Fs.ensureDir(Scope.DEFAULT_ROOT + '/');
           
